@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Event - EventHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('organizer.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('organizer.events') }}"><i class="fas fa-calendar-alt"></i> My Events</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('organizer.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('organizer.events') }}" class="menu-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>My Events</span>
+                </a>
+                <a href="{{ url_for('organizer.create_event') }}" class="menu-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create Event</span>
+                </a>
+                <a href="{{ url_for('organizer.bookings') }}" class="menu-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Bookings</span>
+                </a>
+                <a href="{{ url_for('organizer.feedbacks') }}" class="menu-item">
+                    <i class="fas fa-comments"></i>
+                    <span>Feedbacks</span>
+                </a>
+                <a href="{{ url_for('organizer.profile') }}" class="menu-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-edit"></i> Edit Event</h1>
+                    <p>Update your event details. Changes will require admin approval.</p>
+                </div>
+                <div class="page-header-actions">
+                    <a href="{{ url_for('organizer.event_details', event_id=event.event_id) }}" class="btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Event
+                    </a>
+                </div>
+            </div>
+
+            <!-- Event Edit Form -->
+            <div class="form-container">
+                <form method="POST" class="event-form" id="eventForm" enctype="multipart/form-data">
+                    <!-- Basic Information Section -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-info-circle"></i> Basic Information</h2>
+                            <p>Essential details about your event</p>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label for="title" class="required">Event Title</label>
+                                <input type="text" id="title" name="title" required maxlength="200" 
+                                       value="{{ event.title }}" placeholder="Enter a compelling event title">
+                                <small>Choose a clear, descriptive title that attracts attendees</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="category_id" class="required">Category</label>
+                                <select id="category_id" name="category_id" required>
+                                    <option value="">Select a category</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category.category_id }}" {% if event.category_id == category.category_id %}selected{% endif %}>{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="total_seats" class="required">Total Seats</label>
+                                <input type="number" id="total_seats" name="total_seats" required min="1" max="10000" 
+                                       value="{{ event.total_seats }}" placeholder="e.g., 100" {% if event.get_booked_seats() > 0 %}readonly{% endif %}>
+                                <small>{% if event.get_booked_seats() > 0 %}Cannot change total seats as bookings exist{% else %}Maximum number of attendees{% endif %}</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="price" class="required">Ticket Price ($)</label>
+                                <input type="number" id="price" name="price" required min="0" step="0.01" 
+                                       value="{{ event.price }}" placeholder="e.g., 25.00">
+                                <small>Price per ticket in USD (set to 0 for free events)</small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label for="description">Event Description</label>
+                                <textarea id="description" name="description" rows="5" 
+                                          placeholder="Describe your event in detail. What can attendees expect?">{{ event.description }}</textarea>
+                                <small>Provide a detailed description to help attendees understand what to expect</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date & Location Section -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-map-marker-alt"></i> Date & Location</h2>
+                            <p>When and where your event will take place</p>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="event_date" class="required">Event Date & Time</label>
+                                <input type="datetime-local" id="event_date" name="event_date" required
+                                       value="{{ event.event_date.strftime('%Y-%m-%dT%H:%M') if event.event_date else '' }}">
+                                <small>Select the date and time for your event</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="location" class="required">Venue/Location</label>
+                                <input type="text" id="location" name="location" required maxlength="255" 
+                                       value="{{ event.location }}" placeholder="e.g., Convention Center, 123 Main St">
+                                <small>Full address or venue name</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Media Section -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h2><i class="fas fa-image"></i> Event Media</h2>
+                            <p>Add visual content to make your event more appealing</p>
+                        </div>
+
+                        {% if event.image_url %}
+                            <div class="current-image">
+                                <h3>Current Image</h3>
+                                <div class="image-preview">
+                                    <img src="{{ event.image_url }}" alt="{{ event.title }}">
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div class="media-upload-options">
+                            <div class="upload-option">
+                                <h3>Upload from Computer</h3>
+                                <div class="form-group">
+                                    <label for="image_file">Choose Image File</label>
+                                    <input type="file" id="image_file" name="image_file" accept="image/*">
+                                    <small>Supported formats: JPG, PNG, GIF (Max size: 5MB)</small>
+                                </div>
+                            </div>
+
+                            <div class="upload-divider">
+                                <span>OR</span>
+                            </div>
+
+                            <div class="upload-option">
+                                <h3>Use Image URL</h3>
+                                <div class="form-group">
+                                    <label for="image_url">Event Image URL</label>
+                                    <input type="url" id="image_url" name="image_url" 
+                                           value="{{ event.image_url if event.image_url and event.image_url.startswith('http') else '' }}"
+                                           placeholder="https://example.com/event-image.jpg">
+                                    <small>Provide a URL to an image that represents your event</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="image-preview" id="imagePreview" style="display: none;">
+                            <img id="previewImg" src="/placeholder.svg" alt="Event Preview">
+                            <button type="button" class="btn-remove-image" onclick="removeImage()">
+                                <i class="fas fa-times"></i> Remove Image
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <a href="{{ url_for('organizer.event_details', event_id=event.event_id) }}" class="btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/create-event.js') }}"></script>
+</body>
+</html>

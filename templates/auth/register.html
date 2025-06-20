@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - EventHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('main.index') }}">Home</a></li>
+                <li><a href="{{ url_for('main.login') }}">Login</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Registration Form -->
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>Create Your Account</h2>
+                <p>Join EventHub and start your journey</p>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="auth-form" id="registerForm">
+                <!-- Role Selection -->
+                <div class="role-selection">
+                    <h3>Choose Your Role</h3>
+                    <div class="role-options">
+                        <div class="role-option">
+                            <input type="radio" id="customer" name="role" value="customer" required>
+                            <label for="customer" class="role-card">
+                                <div class="role-icon">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="role-info">
+                                    <h4>Customer</h4>
+                                    <p>Discover and book amazing events</p>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="role-option">
+                            <input type="radio" id="organizer" name="role" value="organizer" required>
+                            <label for="organizer" class="role-card">
+                                <div class="role-icon">
+                                    <i class="fas fa-user-tie"></i>
+                                </div>
+                                <div class="role-info">
+                                    <h4>Organizer</h4>
+                                    <p>Create and manage your events</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <h3>Basic Information</h3>
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required minlength="6">
+                        <small>Minimum 6 characters</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" required>
+                    </div>
+                </div>
+
+                <!-- Customer Specific Fields -->
+                <div class="form-section" id="customerFields" style="display: none;">
+                    <h3>Customer Details</h3>
+                    <div class="form-group">
+                        <label for="customer_phone">Phone Number</label>
+                        <input type="tel" id="customer_phone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <textarea id="address" name="address" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="preferences">Event Preferences</label>
+                        <textarea id="preferences" name="preferences" rows="3" placeholder="What types of events are you interested in?"></textarea>
+                    </div>
+                </div>
+
+                <!-- Organizer Specific Fields -->
+                <div class="form-section" id="organizerFields" style="display: none;">
+                    <h3>Organizer Details</h3>
+                    <div class="form-group">
+                        <label for="organization_name">Organization Name</label>
+                        <input type="text" id="organization_name" name="organization_name">
+                    </div>
+                    <div class="form-group">
+                        <label for="organizer_phone">Phone Number</label>
+                        <input type="tel" id="organizer_phone" name="phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="bio">Bio</label>
+                        <textarea id="bio" name="bio" rows="4" placeholder="Tell us about yourself and your organization"></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary btn-full">Create Account</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="{{ url_for('main.login') }}">Login here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show/hide role-specific fields
+        document.addEventListener('DOMContentLoaded', function() {
+            const roleInputs = document.querySelectorAll('input[name="role"]');
+            const customerFields = document.getElementById('customerFields');
+            const organizerFields = document.getElementById('organizerFields');
+
+            roleInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    if (this.value === 'customer') {
+                        customerFields.style.display = 'block';
+                        organizerFields.style.display = 'none';
+                        // Make customer fields required
+                        document.getElementById('customer_phone').required = false;
+                        document.getElementById('organizer_phone').required = false;
+                    } else if (this.value === 'organizer') {
+                        customerFields.style.display = 'none';
+                        organizerFields.style.display = 'block';
+                        // Make organizer fields required
+                        document.getElementById('customer_phone').required = false;
+                        document.getElementById('organizer_phone').required = false;
+                    }
+                });
+            });
+
+            // Password confirmation validation
+            const password = document.getElementById('password');
+            const confirmPassword = document.getElementById('confirm_password');
+
+            function validatePassword() {
+                if (password.value !== confirmPassword.value) {
+                    confirmPassword.setCustomValidity("Passwords don't match");
+                } else {
+                    confirmPassword.setCustomValidity('');
+                }
+            }
+
+            password.addEventListener('change', validatePassword);
+            confirmPassword.addEventListener('keyup', validatePassword);
+        });
+    </script>
+</body>
+</html>

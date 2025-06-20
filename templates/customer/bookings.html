@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookings - EventHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bookings.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('customer.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('customer.bookings') }}"><i class="fas fa-ticket-alt"></i> My Bookings</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('customer.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('customer.events') }}" class="menu-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Browse Events</span>
+                </a>
+                <a href="{{ url_for('customer.bookings') }}" class="menu-item active">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>My Bookings</span>
+                </a>
+                <a href="{{ url_for('customer.profile') }}" class="menu-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-ticket-alt"></i> My Bookings</h1>
+                    <p>Manage your event bookings and view booking history</p>
+                </div>
+                <div class="page-header-stats">
+                    <div class="stat-item">
+                        <span class="stat-value">{{ bookings|length }}</span>
+                        <span class="stat-label">Total Bookings</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ bookings|selectattr('status', 'equalto', 'booked')|list|length }}</span>
+                        <span class="stat-label">Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings Controls -->
+            <div class="bookings-controls">
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="status-filter">Status:</label>
+                        <select id="status-filter" onchange="filterBookings()">
+                            <option value="all">All Status</option>
+                            <option value="booked">Confirmed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="date-filter">Date:</label>
+                        <select id="date-filter" onchange="filterBookings()">
+                            <option value="all">All Dates</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="past">Past Events</option>
+                            <option value="this-month">This Month</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="sort-filter">Sort by:</label>
+                        <select id="sort-filter" onchange="sortBookings()">
+                            <option value="date-desc">Date (Newest First)</option>
+                            <option value="date-asc">Date (Oldest First)</option>
+                            <option value="price-desc">Price (High to Low)</option>
+                            <option value="price-asc">Price (Low to High)</option>
+                            <option value="status">Status</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-controls">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Search bookings by event name..." onkeyup="filterBookings()">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings Content -->
+            <div class="bookings-content" id="bookingsContent">
+                {% if bookings %}
+                    <!-- Upcoming Bookings Section -->
+                    <div class="bookings-section" id="upcomingSection">
+                        <div class="section-header">
+                            <h2><i class="fas fa-calendar-check"></i> Upcoming Events</h2>
+                            <span class="section-count" id="upcomingCount">
+                                {% set upcoming_count = [] %}
+                                {% for booking in bookings %}
+                                    {% if booking.event and booking.event.event_date and booking.event.event_date > current_time and booking.status == 'booked' %}
+                                        {% set _ = upcoming_count.append(1) %}
+                                    {% endif %}
+                                {% endfor %}
+                                {{ upcoming_count|length }}
+                            </span>
+                        </div>
+                        <div class="bookings-grid" id="upcomingBookings">
+                            {% for booking in bookings %}
+                                {% if booking.event and booking.event.event_date and booking.event.event_date > current_time and booking.status == 'booked' %}
+                                    <div class="booking-card" 
+                                         data-booking-id="{{ booking.booking_id }}"
+                                         data-event-id="{{ booking.event_id }}"
+                                         data-status="{{ booking.status }}"
+                                         data-event-date="{{ booking.event.event_date.isoformat() if booking.event.event_date else '' }}"
+                                         data-event-title="{{ booking.event.title if booking.event else '' }}"
+                                         data-total-amount="{{ booking.total_amount if booking.total_amount else 0 }}"
+                                         data-quantity="{{ booking.quantity }}"
+                                         data-booking-time="{{ booking.booking_time.isoformat() if booking.booking_time else '' }}"
+                                         data-payment-status="{{ booking.get_payment_status() }}"
+                                         data-is-upcoming="true">
+                                        
+                                        <div class="booking-header">
+                                            <div class="booking-id">Booking #{{ booking.booking_id }}</div>
+                                            <h3 class="booking-title">{{ booking.event.title if booking.event else 'Event Title' }}</h3>
+                                            <div class="booking-status status-{{ booking.status }}">{{ booking.status.title() }}</div>
+                                        </div>
+                                        
+                                        <div class="booking-details">
+                                            <div class="detail-row">
+                                                <i class="detail-icon fas fa-calendar"></i>
+                                                <span class="detail-label">Date:</span>
+                                                <span class="detail-value">{{ booking.event.event_date.strftime('%A, %B %d, %Y') if booking.event and booking.event.event_date else 'N/A' }}</span>
+                                            </div>
+                                            <div class="detail-row">
+                                                <i class="detail-icon fas fa-clock"></i>
+                                                <span class="detail-label">Time:</span>
+                                                <span class="detail-value">{{ booking.event.event_date.strftime('%I:%M %p') if booking.event and booking.event.event_date else 'N/A' }}</span>
+                                            </div>
+                                            <div class="detail-row">
+                                                <i class="detail-icon fas fa-ticket-alt"></i>
+                                                <span class="detail-label">Tickets:</span>
+                                                <span class="detail-value">{{ booking.quantity }} ticket{{ 's' if booking.quantity > 1 else '' }}</span>
+                                            </div>
+                                            <div class="detail-row">
+                                                <i class="detail-icon fas fa-dollar-sign"></i>
+                                                <span class="detail-label">Total:</span>
+                                                <span class="detail-value price-value">${{ "%.2f"|format(booking.total_amount if booking.total_amount else 0) }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="booking-actions">
+                                            <button class="btn-action view" onclick="viewBookingDetails({{ booking.booking_id }})">
+                                                <i class="fas fa-eye"></i> View Details
+                                            </button>
+                                            <button class="btn-action download" onclick="downloadReceipt({{ booking.booking_id }})">
+                                                <i class="fas fa-download"></i> Receipt
+                                            </button>
+                                            <button class="btn-action cancel" onclick="cancelBooking({{ booking.booking_id }})">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Past Bookings Section -->
+                    <div class="bookings-section" id="pastSection">
+                        <div class="section-header">
+                            <h2><i class="fas fa-history"></i> Booking History</h2>
+                            <span class="section-count" id="pastCount">
+                                {% set past_count = [] %}
+                                {% for booking in bookings %}
+                                    {% if not booking.event or not booking.event.event_date or booking.event.event_date <= current_time or booking.status != 'booked' %}
+                                        {% set _ = past_count.append(1) %}
+                                    {% endif %}
+                                {% endfor %}
+                                {{ past_count|length }}
+                            </span>
+                        </div>
+                        <div class="bookings-grid" id="pastBookings">
+                            {% for booking in bookings %}
+                                {% if not booking.event or not booking.event.event_date or booking.event.event_date <= current_time or booking.status != 'booked' %}
+                                    <div class="booking-card" 
+                                         data-booking-id="{{ booking.booking_id }}"
+                                         data-event-id="{{ booking.event_id }}"
+                                         data-status="{{ booking.status }}"
+                                         data-event-date="{{ booking.event.event_date.isoformat() if booking.event and booking.event.event_date else '' }}"
+                                         data-event-title="{{ booking.event.title if booking.event else '' }}"
+                                         data-total-amount="{{ booking.total_amount if booking.total_amount else 0 }}"
+                                         data-quantity="{{ booking.quantity }}"
+                                         data-booking-time="{{ booking.booking_time.isoformat() if booking.booking_time else '' }}"
+                                         data-payment-status="{{ booking.get_payment_status() }}"
+                                         data-is-upcoming="false">
+                                        
+                                        <div class="booking-header">
+                                            <div class="booking-id">Booking #{{ booking.booking_id }}</div>
+                                            <h3 class="booking-title">{{ booking.event.title if booking.event else 'Event Title' }}</h3>
+                                            <div class="booking-status status-{{ 'completed' if booking.status == 'booked' else booking.status }}">
+                                                {{ 'Completed' if booking.status == 'booked' else booking.status.title() }}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="booking-details">
+                                            <div class="detail-row">
+                                                <i class="detail-icon fas fa-calendar"></i>
+                                                <span class="detail-label">Date:</span>
+                                                <span class="detail-value">{{ booking.event.event_date.strftime('%A, %B %d, %Y') if booking.event and booking.event.event_date else 'N/A' }}</span>
+                                            </div>
+                                            <div class="detail-row">
+                                                <i class="detail-icon fas fa-clock"></i>
+                                                <span class="detail-label">Time:</span>
+                                                <span class="detail-value">{{ booking.event.event_date.strftime('%I:%M %p') if booking.event and booking.event.event_date else 'N/A' }}</span>
+                                            </div>
+                                            <div class="detail-row">
+                                                <i class="detail-icon fas fa-ticket-alt"></i>
+                                                <span class="detail-label">Tickets:</span>
+                                                <span class="detail-value">{{ booking.quantity }} ticket{{ 's' if booking.quantity > 1 else '' }}</span>
+                                            </div>
+                                            <div class="detail-row">
+                                                <i class="detail-icon fas fa-dollar-sign"></i>
+                                                <span class="detail-label">Total:</span>
+                                                <span class="detail-value price-value">${{ "%.2f"|format(booking.total_amount if booking.total_amount else 0) }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="booking-actions">
+                                            <button class="btn-action view" onclick="viewBookingDetails({{ booking.booking_id }})">
+                                                <i class="fas fa-eye"></i> View Details
+                                            </button>
+                                            <button class="btn-action download" onclick="downloadReceipt({{ booking.booking_id }})">
+                                                <i class="fas fa-download"></i> Receipt
+                                            </button>
+                                            {% if booking.status == 'booked' and booking.event and booking.event.event_date and booking.event.event_date <= current_time %}
+                                                <button class="btn-action rate" onclick="rateEvent({{ booking.booking_id }})">
+                                                    <i class="fas fa-star"></i> Rate Event
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- Empty State -->
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                        <h3>No Bookings Yet</h3>
+                        <p>You haven't made any bookings yet. Start exploring events and book your first experience!</p>
+                        <a href="{{ url_for('customer.events') }}" class="btn-primary">
+                            <i class="fas fa-search"></i> Browse Events
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- No Results State -->
+            <div class="no-results" id="noResults" style="display: none;">
+                <div class="no-results-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>No Bookings Found</h3>
+                <p>No bookings match your current search and filter criteria.</p>
+                <button class="btn-secondary" onclick="clearFilters()">
+                    <i class="fas fa-times"></i> Clear Filters
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Booking Details Modal -->
+    <div id="bookingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-ticket-alt"></i> Booking Details</h2>
+                <span class="close" onclick="closeModal('bookingModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="bookingModalBody">
+                <!-- Booking details will be populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('bookingModal')">Close</button>
+                <button class="btn-primary" id="downloadReceiptBtn" onclick="downloadReceipt()">
+                    <i class="fas fa-download"></i> Download Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Booking Modal -->
+    <div id="cancelModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle"></i> Cancel Booking</h2>
+                <span class="close" onclick="closeModal('cancelModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel this booking?</p>
+                <div class="cancel-info">
+                    <div class="info-item">
+                        <strong>Event:</strong> <span id="cancelEventName"></span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Date:</strong> <span id="cancelEventDate"></span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Amount:</strong> <span id="cancelAmount"></span>
+                    </div>
+                </div>
+                <div class="cancel-warning">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Cancellation may be subject to terms and conditions. Please review the cancellation policy.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('cancelModal')">Keep Booking</button>
+                <form id="cancelForm" method="POST" action="">
+                    <button type="submit" class="btn-danger">
+                        <i class="fas fa-times"></i> Cancel Booking
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rating Modal -->
+    <div id="ratingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-star"></i> Rate Your Experience</h2>
+                <span class="close" onclick="closeModal('ratingModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="rating-event-info">
+                    <h3 id="ratingEventName"></h3>
+                    <p id="ratingEventDate"></p>
+                </div>
+                <form id="ratingForm" method="POST" action="">
+                    <div class="rating-section">
+                        <label>How would you rate this event?</label>
+                        <div class="star-rating">
+                            <input type="radio" id="star5" name="rating" value="5">
+                            <label for="star5" title="5 stars"><i class="fas fa-star"></i></label>
+                            <input type="radio" id="star4" name="rating" value="4">
+                            <label for="star4" title="4 stars"><i class="fas fa-star"></i></label>
+                            <input type="radio" id="star3" name="rating" value="3">
+                            <label for="star3" title="3 stars"><i class="fas fa-star"></i></label>
+                            <input type="radio" id="star2" name="rating" value="2">
+                            <label for="star2" title="2 stars"><i class="fas fa-star"></i></label>
+                            <input type="radio" id="star1" name="rating" value="1">
+                            <label for="star1" title="1 star"><i class="fas fa-star"></i></label>
+                        </div>
+                    </div>
+                    <div class="comment-section">
+                        <label for="comments">Share your experience (optional):</label>
+                        <textarea id="comments" name="comments" rows="4" placeholder="Tell us about your experience..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal('ratingModal')">Cancel</button>
+                <button class="btn-primary" onclick="submitRating()">
+                    <i class="fas fa-paper-plane"></i> Submit Review
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bookings.js') }}"></script>
+</body>
+</html>

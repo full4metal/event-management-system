@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis Dashboard - EventHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bookings.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Simplified Sentiment Analysis Dashboard Styles */
+        .sentiment-dashboard {
+            display: grid;
+            gap: 30px;
+        }
+        
+        .dashboard-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* Overview Cards */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .overview-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .overview-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--card-color);
+        }
+        
+        .overview-card.sentiment-score {
+            --card-color: linear-gradient(135deg, #667eea, #764ba2);
+        }
+        
+        .overview-card.positive {
+            --card-color: linear-gradient(135deg, #43e97b, #38f9d7);
+        }
+        
+        .overview-card.negative {
+            --card-color: linear-gradient(135deg, #fa709a, #fee140);
+        }
+        
+        .overview-card.total {
+            --card-color: linear-gradient(135deg, #a8edea, #fed6e3);
+        }
+        
+        .card-icon {
+            font-size: 32px;
+            margin-bottom: 15px;
+            background: var(--card-color);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .card-label {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        
+        .card-trend {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .trend-up {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .trend-down {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .trend-stable {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        /* Chart Container */
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        
+        /* Simplified Insights Section */
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .insight-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid var(--insight-color);
+        }
+        
+        .insight-card.urgent {
+            --insight-color: #dc3545;
+        }
+        
+        .insight-card.opportunity {
+            --insight-color: #ffc107;
+        }
+        
+        .insight-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .insight-icon {
+            font-size: 20px;
+            color: var(--insight-color);
+        }
+        
+        .insight-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .insight-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .insight-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        
+        .insight-item:last-child {
+            border-bottom: none;
+        }
+        
+        .priority-high {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        
+        /* Simplified Themes Section */
+        .themes-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .theme-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .theme-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .theme-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .theme-item:last-child {
+            border-bottom: none;
+        }
+        
+        .theme-text {
+            font-size: 14px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .theme-count {
+            background: #e9ecef;
+            color: #495057;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .positive-themes .theme-count {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .negative-themes .theme-count {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        /* Filters */
+        .analysis-filters {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+            min-width: 80px;
+        }
+        
+        .filter-group select {
+            padding: 8px 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            background-color: white;
+            font-size: 14px;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+        
+        .filter-group select:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
+        .export-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-export {
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-export:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .themes-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .overview-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                justify-content: space-between;
+            }
+            
+            .export-actions {
+                margin-left: 0;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('organizer.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('organizer.events') }}"><i class="fas fa-calendar-alt"></i> My Events</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('organizer.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('organizer.events') }}" class="menu-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>My Events</span>
+                </a>
+                <a href="{{ url_for('organizer.create_event') }}" class="menu-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create Event</span>
+                </a>
+                <a href="{{ url_for('organizer.bookings') }}" class="menu-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Bookings</span>
+                </a>
+                <a href="{{ url_for('organizer.feedbacks') }}" class="menu-item">
+                    <i class="fas fa-comments"></i>
+                    <span>Feedbacks</span>
+                </a>
+                <a href="{{ url_for('organizer.sentiment_analysis') }}" class="menu-item active">
+                    <i class="fas fa-brain"></i>
+                    <span>Sentiment Analysis</span>
+                </a>
+                <a href="{{ url_for('organizer.profile') }}" class="menu-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-brain"></i> Sentiment Analysis</h1>
+                    <p>Understand how customers feel about your events</p>
+                </div>
+                <div class="page-header-actions">
+                    <a href="{{ url_for('organizer.feedbacks') }}" class="btn-secondary">
+                        <i class="fas fa-comments"></i> View Feedbacks
+                    </a>
+                </div>
+            </div>
+
+            <!-- Analysis Filters -->
+            <div class="analysis-filters">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="event-filter">Event:</label>
+                        <select id="event-filter" onchange="updateAnalysis()">
+                            <option value="all">All Events</option>
+                            {% for event in events %}
+                                <option value="{{ event.event_id }}">{{ event.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="time-filter">Time Period:</label>
+                        <select id="time-filter" onchange="updateAnalysis()">
+                            <option value="all">All Time</option>
+                            <option value="last-week">Last Week</option>
+                            <option value="last-month">Last Month</option>
+                            <option value="last-quarter">Last Quarter</option>
+                        </select>
+                    </div>
+                    <div class="export-actions">
+                        <button class="btn-export" onclick="exportAnalysis()">
+                            <i class="fas fa-download"></i> Export Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sentiment-dashboard">
+                <!-- Overview Cards -->
+                <div class="overview-grid">
+                    <div class="overview-card sentiment-score">
+                        <div class="card-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="card-value" id="overall-sentiment-score">
+                            {{ "%.1f"|format(analysis_results.aggregate_metrics.average_sentiment_score) if analysis_results.aggregate_metrics else '0.0' }}%
+                        </div>
+                        <div class="card-label">Overall Sentiment Score</div>
+                        <div class="card-trend trend-{{ 'up' if analysis_results.trends.trend == 'improving' else 'down' if analysis_results.trends.trend == 'declining' else 'stable' }}" id="sentiment-trend">
+                            {% if analysis_results.trends.trend == 'improving' %}
+                                <i class="fas fa-arrow-up"></i> Improving
+                            {% elif analysis_results.trends.trend == 'declining' %}
+                                <i class="fas fa-arrow-down"></i> Declining
+                            {% else %}
+                                <i class="fas fa-minus"></i> Stable
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="overview-card positive">
+                        <div class="card-icon">
+                            <i class="fas fa-thumbs-up"></i>
+                        </div>
+                        <div class="card-value" id="positive-percentage">
+                            {{ "%.1f"|format(analysis_results.aggregate_metrics.sentiment_distribution.positive_percentage) if analysis_results.aggregate_metrics else '0.0' }}%
+                        </div>
+                        <div class="card-label">Positive Feedback</div>
+                        <div class="card-trend trend-up">
+                            <i class="fas fa-heart"></i> {{ analysis_results.aggregate_metrics.sentiment_distribution.positive if analysis_results.aggregate_metrics else 0 }} reviews
+                        </div>
+                    </div>
+                    
+                    <div class="overview-card negative">
+                        <div class="card-icon">
+                            <i class="fas fa-thumbs-down"></i>
+                        </div>
+                        <div class="card-value" id="negative-percentage">
+                            {{ "%.1f"|format(analysis_results.aggregate_metrics.sentiment_distribution.negative_percentage) if analysis_results.aggregate_metrics else '0.0' }}%
+                        </div>
+                        <div class="card-label">Negative Feedback</div>
+                        <div class="card-trend trend-down">
+                            <i class="fas fa-exclamation-triangle"></i> {{ analysis_results.aggregate_metrics.sentiment_distribution.negative if analysis_results.aggregate_metrics else 0 }} reviews
+                        </div>
+                    </div>
+                    
+                    <div class="overview-card total">
+                        <div class="card-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="card-value" id="total-feedback">
+                            {{ analysis_results.aggregate_metrics.total_feedback if analysis_results.aggregate_metrics else 0 }}
+                        </div>
+                        <div class="card-label">Total Reviews</div>
+                        <div class="card-trend trend-stable">
+                            <i class="fas fa-database"></i> Feedback entries
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sentiment Distribution Chart -->
+                <div class="chart-container">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="fas fa-pie-chart"></i>
+                            Sentiment Breakdown
+                        </h3>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="sentimentChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Key Insights -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="fas fa-lightbulb"></i>
+                            Key Insights
+                        </h3>
+                    </div>
+                    
+                    <div class="insights-grid">
+                        <div class="insight-card urgent">
+                            <div class="insight-header">
+                                <div class="insight-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="insight-title">Areas Needing Attention</div>
+                            </div>
+                            <ul class="insight-list" id="urgent-concerns">
+                                {% if analysis_results.insights.urgent_concerns %}
+                                    {% for concern in analysis_results.insights.urgent_concerns %}
+                                        <li class="insight-item priority-{{ concern.priority if concern.priority else 'medium' }}">
+                                            {{ concern.description }}
+                                        </li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="insight-item">No urgent concerns identified - great job!</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        
+                        <div class="insight-card opportunity">
+                            <div class="insight-header">
+                                <div class="insight-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="insight-title">Improvement Opportunities</div>
+                            </div>
+                            <ul class="insight-list" id="opportunities">
+                                {% if analysis_results.insights.improvement_opportunities %}
+                                    {% for opportunity in analysis_results.insights.improvement_opportunities %}
+                                        <li class="insight-item">
+                                            {{ opportunity.description }}
+                                        </li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="insight-item">Keep monitoring feedback for improvement opportunities</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Common Themes -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <i class="fas fa-tags"></i>
+                            What Customers Are Saying
+                        </h3>
+                    </div>
+                    
+                    <div class="themes-container">
+                        <div class="theme-card positive-themes">
+                            <h4 style="color: #28a745; margin-bottom: 15px;">
+                                <i class="fas fa-thumbs-up"></i> What They Love
+                            </h4>
+                            <ul class="theme-list">
+                                {% if analysis_results.themes.top_positive_themes %}
+                                    {% for theme, count in analysis_results.themes.top_positive_themes[:5] %}
+                                        <li class="theme-item">
+                                            <span class="theme-text">{{ theme.title() }}</span>
+                                            <span class="theme-count">{{ count }}</span>
+                                        </li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="theme-item">
+                                        <span class="theme-text">No positive themes identified yet</span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        
+                        <div class="theme-card negative-themes">
+                            <h4 style="color: #dc3545; margin-bottom: 15px;">
+                                <i class="fas fa-thumbs-down"></i> Areas to Improve
+                            </h4>
+                            <ul class="theme-list">
+                                {% if analysis_results.themes.top_negative_themes %}
+                                    {% for theme, count in analysis_results.themes.top_negative_themes[:5] %}
+                                        <li class="theme-item">
+                                            <span class="theme-text">{{ theme.title() }}</span>
+                                            <span class="theme-count">{{ count }}</span>
+                                        </li>
+                                    {% endfor %}
+                                {% else %}
+                                    <li class="theme-item">
+                                        <span class="theme-text">No negative themes identified - excellent!</span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Hidden data for JavaScript -->
+    <script type="application/json" id="analysisData">
+        {{ analysis_results|tojson if analysis_results else '{}' }}
+    </script>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sentiment-analysis.js') }}"></script>
+</body>
+</html>

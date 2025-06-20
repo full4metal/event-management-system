@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Event - EventHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .feedback-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .event-info-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+        
+        .event-info-card h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        
+        .event-info-card .event-details {
+            color: #6c757d;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        
+        .event-info-card .event-date {
+            color: #4caf50;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        
+        .rating-form {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .rating-section {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .rating-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .star-rating input {
+            display: none;
+        }
+        
+        .star-rating label {
+            font-size: 36px;
+            color: #ddd;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 5px;
+        }
+        
+        .star-rating label:hover,
+        .star-rating label:hover ~ label,
+        .star-rating input:checked ~ label {
+            color: #ffc107;
+            transform: scale(1.1);
+        }
+        
+        .rating-description {
+            margin-top: 15px;
+            font-size: 16px;
+            color: #6c757d;
+            min-height: 24px;
+        }
+        
+        .comments-section {
+            margin-bottom: 30px;
+        }
+        
+        .comments-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .comments-section textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .comments-section textarea:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
+        .character-count {
+            text-align: right;
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .btn-cancel {
+            background: #6c757d;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-cancel:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        
+        .btn-submit {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .required-note {
+            text-align: center;
+            color: #dc3545;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .feedback-container {
+                padding: 15px;
+            }
+            
+            .star-rating label {
+                font-size: 28px;
+            }
+            
+            .form-actions {
+                flex-direction: column;
+            }
+            
+            .btn-cancel,
+            .btn-submit {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('customer.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('customer.bookings') }}"><i class="fas fa-ticket-alt"></i> My Bookings</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('customer.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('customer.events') }}" class="menu-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Browse Events</span>
+                </a>
+                <a href="{{ url_for('customer.bookings') }}" class="menu-item active">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>My Bookings</span>
+                </a>
+                <a href="{{ url_for('customer.profile') }}" class="menu-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="feedback-container">
+                <!-- Event Information -->
+                <div class="event-info-card">
+                    <h2>{{ event.title }}</h2>
+                    <div class="event-details">
+                        <i class="fas fa-map-marker-alt"></i> {{ event.location }}
+                    </div>
+                    <div class="event-date">
+                        <i class="fas fa-calendar"></i> 
+                        {{ event.event_date.strftime('%A, %B %d, %Y at %I:%M %p') if event.event_date else 'Date TBA' }}
+                    </div>
+                </div>
+
+                <!-- Rating Form -->
+                <div class="rating-form">
+                    <form method="POST" id="feedbackForm">
+                        <!-- Rating Section -->
+                        <div class="rating-section">
+                            <h3>How would you rate this event?</h3>
+                            <div class="required-note">* Star rating is required</div>
+                            
+                            <div class="star-rating">
+                                <input type="radio" id="star5" name="rating" value="5" required>
+                                <label for="star5" title="5 stars - Excellent"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star4" name="rating" value="4" required>
+                                <label for="star4" title="4 stars - Very Good"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star3" name="rating" value="3" required>
+                                <label for="star3" title="3 stars - Good"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star2" name="rating" value="2" required>
+                                <label for="star2" title="2 stars - Fair"><i class="fas fa-star"></i></label>
+                                <input type="radio" id="star1" name="rating" value="1" required>
+                                <label for="star1" title="1 star - Poor"><i class="fas fa-star"></i></label>
+                            </div>
+                            
+                            <div class="rating-description" id="ratingDescription">
+                                Please select a rating
+                            </div>
+                        </div>
+
+                        <!-- Comments Section -->
+                        <div class="comments-section">
+                            <h3>Share your experience (optional)</h3>
+                            <textarea 
+                                name="comments" 
+                                id="comments" 
+                                placeholder="Tell us about your experience at this event. What did you like? What could be improved?"
+                                maxlength="1000"></textarea>
+                            <div class="character-count">
+                                <span id="charCount">0</span>/1000 characters
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="form-actions">
+                            <a href="{{ url_for('customer.bookings') }}" class="btn-cancel">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn-submit" id="submitBtn">
+                                <i class="fas fa-paper-plane"></i> Submit Rating
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const starInputs = document.querySelectorAll('.star-rating input');
+            const starLabels = document.querySelectorAll('.star-rating label');
+            const ratingDescription = document.getElementById('ratingDescription');
+            const commentsTextarea = document.getElementById('comments');
+            const charCount = document.getElementById('charCount');
+            const submitBtn = document.getElementById('submitBtn');
+            const form = document.getElementById('feedbackForm');
+            
+            // Rating descriptions
+            const descriptions = {
+                '5': 'Excellent - Outstanding event!',
+                '4': 'Very Good - Great experience',
+                '3': 'Good - Enjoyable event',
+                '2': 'Fair - Could be better',
+                '1': 'Poor - Disappointing experience'
+            };
+            
+            // Handle star rating
+            starInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    updateStarDisplay();
+                    ratingDescription.textContent = descriptions[this.value];
+                    ratingDescription.style.color = '#2c3e50';
+                });
+            });
+            
+            // Handle star hover effects
+            starLabels.forEach((label, index) => {
+                label.addEventListener('mouseenter', function() {
+                    const rating = 5 - index;
+                    highlightStars(rating);
+                    ratingDescription.textContent = descriptions[rating.toString()];
+                    ratingDescription.style.color = '#4caf50';
+                });
+                
+                label.addEventListener('mouseleave', function() {
+                    updateStarDisplay();
+                    const checkedInput = document.querySelector('.star-rating input:checked');
+                    if (checkedInput) {
+                        ratingDescription.textContent = descriptions[checkedInput.value];
+                        ratingDescription.style.color = '#2c3e50';
+                    } else {
+                        ratingDescription.textContent = 'Please select a rating';
+                        ratingDescription.style.color = '#6c757d';
+                    }
+                });
+            });
+            
+            // Character count for comments
+            commentsTextarea.addEventListener('input', function() {
+                const count = this.value.length;
+                charCount.textContent = count;
+                
+                if (count > 900) {
+                    charCount.style.color = '#dc3545';
+                } else if (count > 800) {
+                    charCount.style.color = '#ffc107';
+                } else {
+                    charCount.style.color = '#6c757d';
+                }
+            });
+            
+            // Form submission
+            form.addEventListener('submit', function(e) {
+                const checkedRating = document.querySelector('.star-rating input:checked');
+                
+                if (!checkedRating) {
+                    e.preventDefault();
+                    alert('Please select a star rating before submitting.');
+                    return;
+                }
+                
+                // Show loading state
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+                submitBtn.disabled = true;
+            });
+            
+            function updateStarDisplay() {
+                starLabels.forEach(label => {
+                    label.style.color = '#ddd';
+                    label.style.transform = 'scale(1)';
+                });
+                
+                const checkedInput = document.querySelector('.star-rating input:checked');
+                if (checkedInput) {
+                    const rating = parseInt(checkedInput.value);
+                    highlightStars(rating);
+                }
+            }
+            
+            function highlightStars(rating) {
+                starLabels.forEach((label, index) => {
+                    if (5 - index <= rating) {
+                        label.style.color = '#ffc107';
+                        label.style.transform = 'scale(1.1)';
+                    } else {
+                        label.style.color = '#ddd';
+                        label.style.transform = 'scale(1)';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

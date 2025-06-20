@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Bookings - EventHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bookings.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Organizer-specific booking styles */
+        .bookings-table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        
+        .bookings-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .bookings-table th {
+            background: #f8f9fa;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e9ecef;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.3s ease;
+        }
+        
+        .bookings-table th:hover {
+            background: #e9ecef;
+        }
+        
+        .bookings-table th.sortable::after {
+            content: '\f0dc';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            margin-left: 8px;
+            opacity: 0.5;
+        }
+        
+        .bookings-table th.sort-asc::after {
+            content: '\f0de';
+            opacity: 1;
+            color: #4caf50;
+        }
+        
+        .bookings-table th.sort-desc::after {
+            content: '\f0dd';
+            opacity: 1;
+            color: #4caf50;
+        }
+        
+        .bookings-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        
+        .bookings-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .booking-id {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .event-name {
+            font-weight: 500;
+            color: #2c3e50;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .event-datetime {
+            color: #6c757d;
+            font-size: 13px;
+        }
+        
+        .venue-location {
+            color: #6c757d;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .attendees-count {
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .booking-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+            min-width: 80px;
+            display: inline-block;
+        }
+        
+        .status-confirmed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .client-contact {
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        
+        .client-name {
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        
+        .client-email {
+            color: #6c757d;
+        }
+        
+        .total-cost {
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: right;
+        }
+        
+        .booking-actions {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        
+        .action-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .action-btn.view {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .action-btn.edit {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .action-btn.cancel {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .status-dropdown {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-export {
+            padding: 8px 16px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-export:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+        
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 15px 0;
+        }
+        
+        .pagination-info {
+            color: #6c757d;
+            font-size: 14px;
+        }
+        
+        .pagination-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .pagination-btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+        
+        .pagination-btn:hover:not(:disabled) {
+            background: #f8f9fa;
+            border-color: #4caf50;
+        }
+        
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .pagination-btn.active {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+        
+        /* Loading state */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .loading-spinner {
+            text-align: center;
+            color: #4caf50;
+        }
+        
+        .loading-spinner i {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .bookings-table {
+                font-size: 13px;
+            }
+            
+            .bookings-table th,
+            .bookings-table td {
+                padding: 10px 8px;
+            }
+        }
+        
+        @media (max-width: 992px) {
+            .bookings-table-container {
+                overflow-x: auto;
+            }
+            
+            .bookings-table {
+                min-width: 1000px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .bookings-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .export-buttons {
+                flex-wrap: wrap;
+            }
+            
+            .pagination-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('organizer.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('organizer.events') }}"><i class="fas fa-calendar-alt"></i> My Events</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('organizer.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('organizer.events') }}" class="menu-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>My Events</span>
+                </a>
+                <a href="{{ url_for('organizer.create_event') }}" class="menu-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create Event</span>
+                </a>
+                <a href="{{ url_for('organizer.bookings') }}" class="menu-item active">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Bookings</span>
+                </a>
+                <a href="{{ url_for('organizer.feedbacks') }}" class="menu-item">
+                    <i class="fas fa-comments"></i>
+                    <span>Feedbacks</span>
+                </a>
+                <a href="{{ url_for('organizer.profile') }}" class="menu-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-ticket-alt"></i> Booking Management</h1>
+                    <p>Manage all bookings for your events</p>
+                </div>
+                <div class="page-header-stats">
+                    <div class="stat-item">
+                        <span class="stat-value">{{ bookings|length }}</span>
+                        <span class="stat-label">Total Bookings</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">{{ bookings|selectattr('status', 'equalto', 'booked')|list|length }}</span>
+                        <span class="stat-label">Confirmed</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value">${{ "%.2f"|format(bookings|selectattr('status', 'equalto', 'booked')|map(attribute='total_amount')|sum) }}</span>
+                        <span class="stat-label">Total Revenue</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bookings Controls -->
+            <div class="bookings-controls">
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="status-filter">Status:</label>
+                        <select id="status-filter" onchange="filterBookings()">
+                            <option value="all">All Status</option>
+                            <option value="booked">Confirmed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="event-filter">Event:</label>
+                        <select id="event-filter" onchange="filterBookings()">
+                            <option value="all">All Events</option>
+                            {% set event_names = [] %}
+                            {% for booking in bookings %}
+                                {% if booking.event and booking.event.title not in event_names %}
+                                    {% set _ = event_names.append(booking.event.title) %}
+                                    <option value="{{ booking.event.title }}">{{ booking.event.title }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="date-filter">Date:</label>
+                        <select id="date-filter" onchange="filterBookings()">
+                            <option value="all">All Dates</option>
+                            <option value="upcoming">Upcoming Events</option>
+                            <option value="past">Past Events</option>
+                            <option value="today">Today</option>
+                            <option value="this-week">This Week</option>
+                            <option value="this-month">This Month</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-controls">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Search by customer name, email, or booking ID..." onkeyup="filterBookings()">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Options -->
+            <div class="export-buttons">
+                <button class="btn-export" onclick="exportToCSV()">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+                <button class="btn-export" onclick="exportToPDF()">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </button>
+                <button class="btn-export" onclick="printBookings()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+
+            <!-- Bookings Table -->
+            <div class="bookings-table-container" style="position: relative;">
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading bookings...</p>
+                    </div>
+                </div>
+
+                {% if bookings %}
+                    <table class="bookings-table" id="bookingsTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-column="booking_id">
+                                    Booking ID
+                                </th>
+                                <th class="sortable" data-column="event_title">
+                                    Event Name
+                                </th>
+                                <th class="sortable" data-column="event_date">
+                                    Date & Time
+                                </th>
+                                <th class="sortable" data-column="location">
+                                    Venue
+                                </th>
+                                <th class="sortable" data-column="quantity">
+                                    Attendees
+                                </th>
+                                <th class="sortable" data-column="status">
+                                    Status
+                                </th>
+                                <th class="sortable" data-column="customer_name">
+                                    Client Contact
+                                </th>
+                                <th class="sortable" data-column="total_amount">
+                                    Total Cost
+                                </th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingsTableBody">
+                            {% for booking in bookings %}
+                                <tr class="booking-row" 
+                                    data-booking-id="{{ booking.booking_id }}"
+                                    data-status="{{ booking.status }}"
+                                    data-event-title="{{ booking.event.title if booking.event else '' }}"
+                                    data-event-date="{{ booking.event.event_date.isoformat() if booking.event and booking.event.event_date else '' }}"
+                                    data-customer-name="{{ booking.customer.name if booking.customer else '' }}"
+                                    data-customer-email="{{ booking.customer.user.email if booking.customer and booking.customer.user else '' }}"
+                                    data-location="{{ booking.event.location if booking.event else '' }}"
+                                    data-quantity="{{ booking.quantity }}"
+                                    data-total-amount="{{ booking.total_amount if booking.total_amount else 0 }}">
+                                    
+                                    <td class="booking-id">#{{ booking.booking_id }}</td>
+                                    
+                                    <td class="event-name" title="{{ booking.event.title if booking.event else 'N/A' }}">
+                                        {{ booking.event.title if booking.event else 'N/A' }}
+                                    </td>
+                                    
+                                    <td class="event-datetime">
+                                        {% if booking.event and booking.event.event_date %}
+                                            <div>{{ booking.event.event_date.strftime('%b %d, %Y') }}</div>
+                                            <div>{{ booking.event.event_date.strftime('%I:%M %p') }}</div>
+                                        {% else %}
+                                            <div>Date TBA</div>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <td class="venue-location" title="{{ booking.event.location if booking.event else 'N/A' }}">
+                                        {{ booking.event.location if booking.event else 'N/A' }}
+                                    </td>
+                                    
+                                    <td class="attendees-count">{{ booking.quantity }}</td>
+                                    
+                                    <td>
+                                        <select class="status-dropdown" onchange="updateBookingStatus({{ booking.booking_id }}, this.value)">
+                                            <option value="booked" {% if booking.status == 'booked' %}selected{% endif %}>Confirmed</option>
+                                            <option value="cancelled" {% if booking.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                        </select>
+                                    </td>
+                                    
+                                    <td class="client-contact">
+                                        {% if booking.customer %}
+                                            <div class="client-name">{{ booking.customer.name }}</div>
+                                            <div class="client-email">{{ booking.customer.user.email if booking.customer.user else 'N/A' }}</div>
+                                        {% else %}
+                                            <div>N/A</div>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <td class="total-cost">
+                                        ${{ "%.2f"|format(booking.total_amount if booking.total_amount else 0) }}
+                                    </td>
+                                    
+                                    <td class="booking-actions">
+                                        <button class="action-btn view" onclick="viewBookingDetails({{ booking.booking_id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="action-btn edit" onclick="editBooking({{ booking.booking_id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% if booking.status == 'booked' %}
+                                            <button class="action-btn cancel" onclick="cancelBooking({{ booking.booking_id }})">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+
+                    <!-- Pagination -->
+                    <div class="pagination-controls">
+                        <div class="pagination-info">
+                            Showing <span id="showingStart">1</span> to <span id="showingEnd">{{ bookings|length }}</span> 
+                            of <span id="totalBookings">{{ bookings|length }}</span> bookings
+                        </div>
+                        <div class="pagination-buttons" id="paginationButtons">
+                            <!-- Pagination buttons will be generated by JavaScript -->
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-ticket-alt"></i>
+                        <h3>No Bookings Yet</h3>
+                        <p>You don't have any bookings for your events yet. Once customers start booking your events, they will appear here.</p>
+                        <a href="{{ url_for('organizer.events') }}" class="btn-primary">
+                            <i class="fas fa-calendar-alt"></i> View My Events
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Booking Details Modal -->
+            <div id="bookingModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-ticket-alt"></i> Booking Details</h2>
+                        <span class="close" onclick="closeModal('bookingModal')">&times;</span>
+                    </div>
+                    <div class="modal-body" id="bookingModalBody">
+                        <!-- Booking details will be populated by JavaScript -->
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary" onclick="closeModal('bookingModal')">Close</button>
+                        <button class="btn-primary" onclick="printBookingDetails()">
+                            <i class="fas fa-print"></i> Print Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Booking Modal -->
+            <div id="editModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-edit"></i> Edit Booking</h2>
+                        <span class="close" onclick="closeModal('editModal')">&times;</span>
+                    </div>
+                    <div class="modal-body" id="editModalBody">
+                        <!-- Edit form will be populated by JavaScript -->
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+                        <button class="btn-primary" onclick="saveBookingChanges()">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/organizer-bookings.js') }}"></script>
+</body>
+</html>

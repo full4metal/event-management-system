@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Events - EventHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/customer-events.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('customer.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('customer.bookings') }}"><i class="fas fa-ticket-alt"></i> My Bookings</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('customer.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('customer.events') }}" class="menu-item active">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Browse Events</span>
+                </a>
+                <a href="{{ url_for('customer.bookings') }}" class="menu-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>My Bookings</span>
+                </a>
+                <a href="{{ url_for('customer.profile') }}" class="menu-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-calendar-alt"></i> Browse Events</h1>
+                    <p>Discover amazing events happening around you</p>
+                </div>
+                <div class="page-header-stats">
+                    <div class="stat-item">
+                        <span class="stat-value">{{ events|length }}</span>
+                        <span class="stat-label">Available Events</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events Controls -->
+            <div class="events-controls">
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="category-filter">Category:</label>
+                        <select id="category-filter" onchange="filterEvents()">
+                            <option value="all">All Categories</option>
+                            {% for category in categories %}
+                                <option value="{{ category.name }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="date-filter">Date:</label>
+                        <select id="date-filter" onchange="filterEvents()">
+                            <option value="all">All Dates</option>
+                            <option value="today">Today</option>
+                            <option value="tomorrow">Tomorrow</option>
+                            <option value="this-week">This Week</option>
+                            <option value="this-month">This Month</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="price-filter">Price:</label>
+                        <select id="price-filter" onchange="filterEvents()">
+                            <option value="all">All Prices</option>
+                            <option value="free">Free</option>
+                            <option value="paid">Paid</option>
+                            <option value="under-25">Under $25</option>
+                            <option value="25-50">$25 - $50</option>
+                            <option value="50-100">$50 - $100</option>
+                            <option value="over-100">Over $100</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="availability-filter">Availability:</label>
+                        <select id="availability-filter" onchange="filterEvents()">
+                            <option value="all">All Events</option>
+                            <option value="available">Available</option>
+                            <option value="limited">Limited Seats</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-controls">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Search events by title or location..." onkeyup="filterEvents()">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sort Options -->
+            <div class="sort-controls">
+                <div class="sort-group">
+                    <label for="sort-select">Sort by:</label>
+                    <select id="sort-select" onchange="sortEvents()">
+                        <option value="date-asc">Date (Earliest First)</option>
+                        <option value="date-desc">Date (Latest First)</option>
+                        <option value="price-asc">Price (Low to High)</option>
+                        <option value="price-desc">Price (High to Low)</option>
+                        <option value="title-asc">Title (A-Z)</option>
+                        <option value="title-desc">Title (Z-A)</option>
+                        <option value="seats-desc">Most Available Seats</option>
+                    </select>
+                </div>
+                <div class="view-toggle">
+                    <button class="view-btn active" data-view="grid" onclick="toggleView('grid')">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="view-btn" data-view="list" onclick="toggleView('list')">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Events Container -->
+            <div class="events-container">
+                {% if events %}
+                    <div class="events-grid" id="events-grid">
+                        {% for event in events %}
+                            {% set is_past_event = event.event_date and event.event_date < current_time %}
+                            <div class="event-card" 
+                                 data-category="{{ event.category.name if event.category else '' }}"
+                                 data-date="{{ event.event_date.isoformat() if event.event_date else '' }}"
+                                 data-availability="{{ 'available' if event.available_seats > 10 else 'limited' if event.available_seats > 0 else 'sold-out' }}"
+                                 data-title="{{ event.title }}"
+                                 data-location="{{ event.location }}"
+                                 data-seats="{{ event.available_seats }}"
+                                 data-price="{{ event.price }}">
+                                
+                                <div class="event-image">
+                                    {% if event.image_url %}
+                                        <img src="{{ event.image_url }}" alt="{{ event.title }}">
+                                    {% else %}
+                                        <div class="event-placeholder">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <div class="event-badges">
+                                        {% if event.available_seats == 0 %}
+                                            <span class="badge sold-out">Sold Out</span>
+                                        {% elif event.available_seats <= 10 %}
+                                            <span class="badge limited">Limited Seats</span>
+                                        {% endif %}
+                                        
+                                        {% if is_past_event %}
+                                            <span class="badge past-event">Event Ended</span>
+                                        {% endif %}
+                                        
+                                        {% if event.category %}
+                                            <span class="badge category">{{ event.category.name }}</span>
+                                        {% endif %}
+                                        
+                                        {% if event.price == 0 %}
+                                            <span class="badge free">Free</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="event-content">
+                                    <div class="event-header">
+                                        <h3 class="event-title">{{ event.title }}</h3>
+                                        <div class="event-organizer">
+                                            <i class="fas fa-user-tie"></i>
+                                            <span>{{ event.organizer.name if event.organizer else 'Unknown' }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="event-details">
+                                        <div class="detail-item">
+                                            <i class="fas fa-calendar"></i>
+                                            <span>{{ event.event_date.strftime('%B %d, %Y') if event.event_date else 'TBA' }}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <i class="fas fa-clock"></i>
+                                            <span>{{ event.event_date.strftime('%I:%M %p') if event.event_date else 'TBA' }}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            <span>{{ event.location }}</span>
+                                        </div>
+                                        <div class="detail-item">
+                                            <i class="fas fa-users"></i>
+                                            <span>{{ event.available_seats }}/{{ event.total_seats }} seats available</span>
+                                        </div>
+                                        <div class="detail-item price-item">
+                                            <i class="fas fa-ticket-alt"></i>
+                                            <span>{% if event.price > 0 %}${{ "%.2f"|format(event.price) }} per ticket{% else %}Free{% endif %}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if event.description %}
+                                        <div class="event-description">
+                                            <p>{{ event.description[:100] }}{% if event.description|length > 100 %}...{% endif %}</p>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <div class="event-actions">
+                                        <a href="{{ url_for('customer.event_details', event_id=event.event_id) }}" class="btn-secondary">
+                                            <i class="fas fa-info-circle"></i>
+                                            View Details
+                                        </a>
+                                        
+                                        {% if is_past_event %}
+                                            <button class="btn-disabled" disabled>
+                                                <i class="fas fa-clock"></i>
+                                                Event Ended
+                                            </button>
+                                        {% elif event.available_seats > 0 %}
+                                            <button class="btn-primary" onclick="openBookingModal({{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}', {{ event.available_seats }}, {{ event.price }})">
+                                                <i class="fas fa-ticket-alt"></i>
+                                                Book Now
+                                            </button>
+                                        {% else %}
+                                            <button class="btn-disabled" disabled>
+                                                <i class="fas fa-times"></i>
+                                                Sold Out
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-times"></i>
+                        <h3>No Events Available</h3>
+                        <p>There are currently no events available. Check back later for exciting events!</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- No Results State -->
+            <div class="no-results" id="no-results" style="display: none;">
+                <i class="fas fa-search"></i>
+                <h3>No Events Found</h3>
+                <p>No events match your current search and filter criteria.</p>
+                <button class="btn-secondary" onclick="clearFilters()">Clear All Filters</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Booking Modal -->
+    <div id="bookingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-ticket-alt"></i> Book Event</h2>
+                <span class="close" onclick="closeBookingModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="event-info">
+                    <h3 id="modalEventTitle">Event Title</h3>
+                    <p>Select the number of tickets you want to book:</p>
+                </div>
+                
+                <form id="bookingForm" method="POST" action="">
+                    <div class="booking-options">
+                        <div class="quantity-selector">
+                            <label for="ticket-quantity">Number of Tickets:</label>
+                            <div class="quantity-controls">
+                                <button type="button" class="qty-btn" onclick="changeQuantity(-1)">-</button>
+                                <input type="number" id="ticket-quantity" name="quantity" value="1" min="1" max="10" readonly>
+                                <button type="button" class="qty-btn" onclick="changeQuantity(1)">+</button>
+                            </div>
+                            <small>Maximum 10 tickets per booking</small>
+                        </div>
+                        
+                        <div class="booking-summary">
+                            <div class="summary-row">
+                                <span>Tickets:</span>
+                                <span id="summary-quantity">1</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Price per ticket:</span>
+                                <span id="summary-price">$0.00</span>
+                            </div>
+                            <div class="summary-row total">
+                                <span>Total Amount:</span>
+                                <span id="summary-total">$0.00</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Available Seats:</span>
+                                <span id="summary-available">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeBookingModal()">Cancel</button>
+                <button class="btn-primary" onclick="submitBooking()">
+                    <i class="fas fa-credit-card"></i>
+                    Proceed to Payment
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/customer-events.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Events - EventHub Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-events.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('admin.reports') }}"><i class="fas fa-chart-bar"></i> Reports</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('admin.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="menu-item">
+                    <i class="fas fa-users"></i>
+                    <span>Users</span>
+                </a>
+                <a href="{{ url_for('admin.events') }}" class="menu-item active">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Events</span>
+                </a>
+                <a href="{{ url_for('admin.categories') }}" class="menu-item">
+                    <i class="fas fa-tags"></i>
+                    <span>Categories</span>
+                </a>
+                <a href="{{ url_for('admin.bookings') }}" class="menu-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Bookings</span>
+                </a>
+                <a href="{{ url_for('admin.reports') }}" class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-calendar-alt"></i> Event Management</h1>
+                    <p>Review and manage all events on the platform</p>
+                </div>
+                <div class="page-header-actions">
+                    <div class="quick-stats">
+                        <div class="quick-stat pending">
+                            <span class="stat-value">{{ events|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+                            <span class="stat-label">Pending Review</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events Controls -->
+            <div class="events-controls">
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="status-filter">Status:</label>
+                        <select id="status-filter" onchange="filterEvents()">
+                            <option value="all" {{ 'selected' if current_status == 'all' else '' }}>All Events</option>
+                            <option value="pending" {{ 'selected' if current_status == 'pending' else '' }}>Pending Review</option>
+                            <option value="approved" {{ 'selected' if current_status == 'approved' else '' }}>Approved</option>
+                            <option value="rejected" {{ 'selected' if current_status == 'rejected' else '' }}>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="date-filter">Date:</label>
+                        <select id="date-filter" onchange="filterEvents()">
+                            <option value="all">All Dates</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="past">Past</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="organizer-filter">Organizer:</label>
+                        <select id="organizer-filter" onchange="filterEvents()">
+                            <option value="all">All Organizers</option>
+                            {% set organizer_names = [] %}
+                            {% for event in events %}
+                                {% if event.organizer and event.organizer.name and event.organizer.name not in organizer_names %}
+                                    {% set _ = organizer_names.append(event.organizer.name) %}
+                                    <option value="{{ event.organizer.name }}">{{ event.organizer.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="search-controls">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Search events..." onkeyup="filterEvents()">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events Statistics -->
+            <div class="events-stats">
+                <div class="event-stat total">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">{{ events|length }}</span>
+                        <span class="stat-label">Total Events</span>
+                    </div>
+                </div>
+                <div class="event-stat pending">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">{{ events|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+                        <span class="stat-label">Pending Review</span>
+                    </div>
+                </div>
+                <div class="event-stat approved">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">{{ events|selectattr('status', 'equalto', 'approved')|list|length }}</span>
+                        <span class="stat-label">Approved</span>
+                    </div>
+                </div>
+                <div class="event-stat rejected">
+                    <div class="stat-icon">
+                        <i class="fas fa-times-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value">{{ events|selectattr('status', 'equalto', 'rejected')|list|length }}</span>
+                        <span class="stat-label">Rejected</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events List -->
+            <div class="events-container">
+                {% if events %}
+                    <div class="events-list">
+                        {% for event in events %}
+                            <div class="event-card" data-status="{{ event.status }}" data-date="{{ 'upcoming' if event.is_upcoming() else 'past' }}" data-organizer="{{ event.organizer.name if event.organizer else '' }}">
+                                <div class="event-image">
+                                    {% if event.image_url %}
+                                        <img src="{{ event.image_url }}" alt="{{ event.title }}">
+                                    {% else %}
+                                        <div class="event-placeholder">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div class="event-status status-{{ event.status }}">
+                                        <i class="fas fa-{{ 'check-circle' if event.status == 'approved' else 'clock' if event.status == 'pending' else 'times-circle' }}"></i>
+                                        {{ event.status|title }}
+                                    </div>
+                                </div>
+                                
+                                <div class="event-details">
+                                    <div class="event-header">
+                                        <h3 class="event-title">{{ event.title }}</h3>
+                                        <div class="event-organizer">
+                                            <i class="fas fa-user-tie"></i>
+                                            <span>{{ event.organizer.name if event.organizer else 'Unknown Organizer' }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="event-info">
+                                        <div class="info-row">
+                                            <div class="info-item">
+                                                <i class="fas fa-calendar"></i>
+                                                <span>{{ event.event_date.strftime('%B %d, %Y') if event.event_date else 'No date' }}</span>
+                                            </div>
+                                            <div class="info-item">
+                                                <i class="fas fa-clock"></i>
+                                                <span>{{ event.event_date.strftime('%I:%M %p') if event.event_date else 'No time' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="info-row">
+                                            <div class="info-item">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                                <span>{{ event.location }}</span>
+                                            </div>
+                                            <div class="info-item">
+                                                <i class="fas fa-tag"></i>
+                                                <span>{{ event.category.name if event.category else 'No category' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="info-row">
+                                            <div class="info-item">
+                                                <i class="fas fa-users"></i>
+                                                <span>{{ event.total_seats }} total seats</span>
+                                            </div>
+                                            <div class="info-item">
+                                                <i class="fas fa-ticket-alt"></i>
+                                                <span>{{ event.bookings|length }} bookings</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if event.description %}
+                                        <div class="event-description">
+                                            <p>{{ event.description[:150] }}{% if event.description|length > 150 %}...{% endif %}</p>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <div class="event-meta">
+                                        <div class="meta-item">
+                                            <span class="meta-label">Created:</span>
+                                            <span class="meta-value">{{ event.created_at.strftime('%m/%d/%Y') if event.created_at else 'Unknown' }}</span>
+                                        </div>
+                                        <div class="meta-item">
+                                            <span class="meta-label">Revenue:</span>
+                                            <span class="meta-value">${{ "%.2f"|format(event.get_total_revenue()) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="event-actions">
+                                    <a href="{{ url_for('admin.event_details', event_id=event.event_id) }}" class="btn-action view">
+                                        <i class="fas fa-eye"></i>
+                                        <span>View Details</span>
+                                    </a>
+                                    
+                                    {% if event.status == 'pending' %}
+                                        <button class="btn-action approve" onclick="confirmAction('approve', {{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                            <i class="fas fa-check"></i>
+                                            <span>Approve</span>
+                                        </button>
+                                        <button class="btn-action reject" onclick="confirmAction('reject', {{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                            <i class="fas fa-times"></i>
+                                            <span>Reject</span>
+                                        </button>
+                                    {% elif event.status == 'approved' %}
+                                        <button class="btn-action reject" onclick="confirmAction('reject', {{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                            <i class="fas fa-ban"></i>
+                                            <span>Revoke</span>
+                                        </button>
+                                    {% elif event.status == 'rejected' %}
+                                        <button class="btn-action approve" onclick="confirmAction('approve', {{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                            <i class="fas fa-undo"></i>
+                                            <span>Approve</span>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h3>No Events Found</h3>
+                        <p>No events have been created yet or match your current filters.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Action Confirmation Modal -->
+            <div id="actionModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2 id="modalTitle"><i class="fas fa-question-circle"></i> Confirm Action</h2>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <p id="modalMessage">Are you sure you want to perform this action?</p>
+                        <div class="event-info-modal">
+                            <strong>Event:</strong> <span id="modalEventTitle"></span>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                        <form id="actionForm" method="POST" action="">
+                            <button type="submit" id="confirmButton" class="btn-primary">Confirm</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+        // Filter events based on status, date, organizer, and search
+        function filterEvents() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const dateFilter = document.getElementById('date-filter').value;
+            const organizerFilter = document.getElementById('organizer-filter').value;
+            const searchInput = document.getElementById('search-input').value.toLowerCase();
+            
+            const eventCards = document.querySelectorAll('.event-card');
+            let visibleCount = 0;
+            
+            eventCards.forEach(card => {
+                const status = card.getAttribute('data-status');
+                const date = card.getAttribute('data-date');
+                const organizer = card.getAttribute('data-organizer');
+                const title = card.querySelector('.event-title').textContent.toLowerCase();
+                
+                // Safely get location text if it exists
+                let location = '';
+                const locationElement = card.querySelector('.info-item:has(.fa-map-marker-alt) span');
+                if (locationElement) {
+                    location = locationElement.textContent.toLowerCase();
+                }
+                
+                const matchesStatus = statusFilter === 'all' || status === statusFilter;
+                const matchesDate = dateFilter === 'all' || date === dateFilter;
+                const matchesOrganizer = organizerFilter === 'all' || organizer === organizerFilter;
+                const matchesSearch = title.includes(searchInput) || location.includes(searchInput) || (organizer && organizer.toLowerCase().includes(searchInput));
+                
+                if (matchesStatus && matchesDate && matchesOrganizer && matchesSearch) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Update URL with current filter
+            if (statusFilter !== 'all') {
+                const url = new URL(window.location);
+                url.searchParams.set('status', statusFilter);
+                window.history.replaceState({}, '', url);
+            }
+        }
+        
+        // Action confirmation modal
+        function confirmAction(action, eventId, eventTitle) {
+            const modal = document.getElementById('actionModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalMessage = document.getElementById('modalMessage');
+            const modalEventTitle = document.getElementById('modalEventTitle');
+            const confirmButton = document.getElementById('confirmButton');
+            const actionForm = document.getElementById('actionForm');
+            
+            modalEventTitle.textContent = eventTitle;
+            
+            if (action === 'approve') {
+                modalTitle.innerHTML = '<i class="fas fa-check-circle"></i> Approve Event';
+                modalMessage.textContent = 'Are you sure you want to approve this event? It will become visible to customers and available for booking.';
+                confirmButton.textContent = 'Approve Event';
+                confirmButton.className = 'btn-success';
+                actionForm.action = `/admin/events/${eventId}/approve`;
+            } else if (action === 'reject') {
+                modalTitle.innerHTML = '<i class="fas fa-times-circle"></i> Reject Event';
+                modalMessage.textContent = 'Are you sure you want to reject this event? It will not be visible to customers and the organizer will be notified.';
+                confirmButton.textContent = 'Reject Event';
+                confirmButton.className = 'btn-danger';
+                actionForm.action = `/admin/events/${eventId}/reject`;
+            }
+            
+            modal.style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('actionModal').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('actionModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial filter from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const statusParam = urlParams.get('status');
+            if (statusParam) {
+                document.getElementById('status-filter').value = statusParam;
+                filterEvents();
+            }
+            
+            // Add hover effects
+            const eventCards = document.querySelectorAll('.event-card');
+            eventCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.classList.add('hover');
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.classList.remove('hover');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

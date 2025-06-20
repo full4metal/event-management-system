@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Events - EventHub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('organizer.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('organizer.events') }}"><i class="fas fa-calendar-alt"></i> My Events</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('organizer.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('organizer.events') }}" class="menu-item active">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>My Events</span>
+                </a>
+                <a href="{{ url_for('organizer.create_event') }}" class="menu-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create Event</span>
+                </a>
+                <a href="{{ url_for('organizer.bookings') }}" class="menu-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Bookings</span>
+                </a>
+                <a href="{{ url_for('organizer.feedbacks') }}" class="menu-item">
+                    <i class="fas fa-comments"></i>
+                    <span>Feedbacks</span>
+                </a>
+                <a href="{{ url_for('organizer.sentiment_analysis') }}" class="menu-item">
+                    <i class="fas fa-brain"></i>
+                    <span>Sentiment Analysis</span>
+                </a>
+                <a href="{{ url_for('organizer.profile') }}" class="menu-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-calendar-alt"></i> My Events</h1>
+                    <p>Manage all your events in one place</p>
+                </div>
+                <div class="page-header-actions">
+                    <a href="{{ url_for('organizer.feedbacks') }}" class="btn-secondary">
+                        <i class="fas fa-comments"></i> View Feedbacks
+                    </a>
+                    <a href="{{ url_for('organizer.sentiment_analysis') }}" class="btn-secondary">
+                        <i class="fas fa-brain"></i> Sentiment Analysis
+                    </a>
+                    <a href="{{ url_for('organizer.create_event') }}" class="btn-primary">
+                        <i class="fas fa-plus"></i> Create New Event
+                    </a>
+                </div>
+            </div>
+
+            <!-- Events Filter and Search -->
+            <div class="events-controls">
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="status-filter">Status:</label>
+                        <select id="status-filter" onchange="filterEvents()">
+                            <option value="all">All</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="date-filter">Date:</label>
+                        <select id="date-filter" onchange="filterEvents()">
+                            <option value="all">All</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="past">Past</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-controls">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Search events..." onkeyup="filterEvents()">
+                        <i class="fas fa-search"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Events List -->
+            <div class="events-container">
+                {% if events %}
+                    <div class="events-stats">
+                        <div class="event-stat">
+                            <span class="stat-value">{{ events|length }}</span>
+                            <span class="stat-label">Total Events</span>
+                        </div>
+                        <div class="event-stat">
+                            <span class="stat-value">{{ events|selectattr('status', 'equalto', 'approved')|list|length }}</span>
+                            <span class="stat-label">Approved</span>
+                        </div>
+                        <div class="event-stat">
+                            <span class="stat-value">{{ events|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+                            <span class="stat-label">Pending</span>
+                        </div>
+                        <div class="event-stat">
+                            <span class="stat-value">{{ events|selectattr('status', 'equalto', 'rejected')|list|length }}</span>
+                            <span class="stat-label">Rejected</span>
+                        </div>
+                    </div>
+
+                    <div class="events-list">
+                        {% for event in events %}
+                            <div class="event-card" data-status="{{ event.status }}" data-date="{{ 'upcoming' if event.is_upcoming() else 'past' }}">
+                                <div class="event-image">
+                                    {% if event.image_url %}
+                                        <img src="{{ event.image_url }}" alt="{{ event.title }}">
+                                    {% else %}
+                                        <div class="event-placeholder">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div class="event-status status-{{ event.status }}">
+                                        <i class="fas fa-{{ 'check-circle' if event.status == 'approved' else 'clock' if event.status == 'pending' else 'times-circle' }}"></i>
+                                        {{ event.status|title }}
+                                    </div>
+                                </div>
+                                <div class="event-details">
+                                    <h3 class="event-title">{{ event.title }}</h3>
+                                    <div class="event-info">
+                                        <div class="info-item">
+                                            <i class="fas fa-calendar"></i>
+                                            <span>{{ event.event_date.strftime('%B %d, %Y') if event.event_date else 'No date' }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <i class="fas fa-clock"></i>
+                                            <span>{{ event.event_date.strftime('%I:%M %p') if event.event_date else 'No time' }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            <span>{{ event.location }}</span>
+                                        </div>
+                                        <div class="info-item">
+                                            <i class="fas fa-users"></i>
+                                            <span>{{ event.available_seats }}/{{ event.total_seats }} seats available</span>
+                                        </div>
+                                    </div>
+                                    <div class="event-stats">
+                                        <div class="stat">
+                                            <span class="stat-value">{{ event.bookings|length }}</span>
+                                            <span class="stat-label">Bookings</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="stat-value">${{ "%.2f"|format(event.get_total_revenue()) }}</span>
+                                            <span class="stat-label">Revenue</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="stat-value">{{ "%.1f"|format(event.get_average_rating()) }}</span>
+                                            <span class="stat-label">Rating</span>
+                                        </div>
+                                        <div class="stat">
+                                            <span class="stat-value">{{ event.feedback|length }}</span>
+                                            <span class="stat-label">Reviews</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="event-actions">
+                                    <a href="{{ url_for('organizer.event_details', event_id=event.event_id) }}" class="btn-action view">
+                                        <i class="fas fa-eye"></i>
+                                        <span>View</span>
+                                    </a>
+                                    <a href="{{ url_for('organizer.edit_event', event_id=event.event_id) }}" class="btn-action edit">
+                                        <i class="fas fa-edit"></i>
+                                        <span>Edit</span>
+                                    </a>
+                                    {% if event.feedback|length > 0 %}
+                                        <a href="{{ url_for('organizer.event_feedbacks', event_id=event.event_id) }}" class="btn-action feedback">
+                                            <i class="fas fa-comments"></i>
+                                            <span>Feedbacks ({{ event.feedback|length }})</span>
+                                        </a>
+                                    {% endif %}
+                                    <button class="btn-action delete" onclick="confirmDelete({{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-plus"></i>
+                        <h3>No Events Yet</h3>
+                        <p>You haven't created any events yet. Start by creating your first event!</p>
+                        <a href="{{ url_for('organizer.create_event') }}" class="btn-primary">Create Event</a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Delete Confirmation Modal -->
+            <div id="deleteModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h2>
+                        <span class="close" onclick="closeModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete the event "<span id="eventTitle"></span>"?</p>
+                        <p class="warning-text">This action cannot be undone. All bookings and feedback associated with this event will also be deleted.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                        <form id="deleteForm" method="POST" action="">
+                            <button type="submit" class="btn-danger">Delete Event</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+        // Filter events based on status, date, and search
+        function filterEvents() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const dateFilter = document.getElementById('date-filter').value;
+            const searchInput = document.getElementById('search-input').value.toLowerCase();
+            
+            const eventCards = document.querySelectorAll('.event-card');
+            let visibleCount = 0;
+            
+            eventCards.forEach(card => {
+                const status = card.getAttribute('data-status');
+                const date = card.getAttribute('data-date');
+                const title = card.querySelector('.event-title').textContent.toLowerCase();
+                const location = card.querySelector('.info-item:nth-child(3) span').textContent.toLowerCase();
+                
+                const matchesStatus = statusFilter === 'all' || status === statusFilter;
+                const matchesDate = dateFilter === 'all' || date === dateFilter;
+                const matchesSearch = title.includes(searchInput) || location.includes(searchInput);
+                
+                if (matchesStatus && matchesDate && matchesSearch) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Show empty state if no events match filters
+            const emptyState = document.querySelector('.empty-state');
+            if (visibleCount === 0 && eventCards.length > 0) {
+                if (!emptyState) {
+                    const eventsContainer = document.querySelector('.events-container');
+                    const noResultsDiv = document.createElement('div');
+                    noResultsDiv.className = 'empty-state';
+                    noResultsDiv.innerHTML = `
+                        <i class="fas fa-search"></i>
+                        <h3>No Events Found</h3>
+                        <p>No events match your current filters. Try adjusting your search criteria.</p>
+                        <button class="btn-secondary" onclick="resetFilters()">Reset Filters</button>
+                    `;
+                    eventsContainer.appendChild(noResultsDiv);
+                }
+            } else {
+                const noResultsDiv = document.querySelector('.empty-state');
+                if (noResultsDiv && eventCards.length > 0) {
+                    noResultsDiv.remove();
+                }
+            }
+        }
+        
+        // Reset all filters
+        function resetFilters() {
+            document.getElementById('status-filter').value = 'all';
+            document.getElementById('date-filter').value = 'all';
+            document.getElementById('search-input').value = '';
+            filterEvents();
+        }
+        
+        // Delete confirmation modal
+        function confirmDelete(eventId, eventTitle) {
+            document.getElementById('eventTitle').textContent = eventTitle;
+            document.getElementById('deleteForm').action = `/organizer/events/${eventId}/delete`;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('deleteModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add event listeners for card hover effects
+            const eventCards = document.querySelectorAll('.event-card');
+            eventCards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.classList.add('hover');
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.classList.remove('hover');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
