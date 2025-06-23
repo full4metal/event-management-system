@@ -172,7 +172,7 @@
                                     <th>Status</th>
                                     <th>Bookings</th>
                                     <th>Revenue</th>
-                                    <th>Action</th>
+                                   <!--  <th>Action</th> -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -187,10 +187,10 @@
                                         </td>
                                         <td>{{ event.bookings|length }}</td>
                                         <td>${{ "%.2f"|format(event.get_total_revenue()) }}</td>
-                                        <td>
+                                        <!-- <td>
                                             <a href="{{ url_for('organizer.event_details', event_id=event.event_id) }}" class="btn-small">
                                                 View
-                                            </a>
+                                            </a> -->
                                         </td>
                                     </tr>
                                 {% endfor %}
