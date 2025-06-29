@@ -42,10 +42,10 @@
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="{{ url_for('admin.users') }}" class="menu-item">
+                <!-- <a href="{{ url_for('admin.users') }}" class="menu-item">
                     <i class="fas fa-users"></i>
                     <span>Users</span>
-                </a>
+                </a> -->
                 <a href="{{ url_for('admin.events') }}" class="menu-item active">
                     <i class="fas fa-calendar-alt"></i>
                     <span>Events</span>
@@ -58,10 +58,10 @@
                     <i class="fas fa-ticket-alt"></i>
                     <span>Bookings</span>
                 </a>
-                <a href="{{ url_for('admin.reports') }}" class="menu-item">
+                <!-- <a href="{{ url_for('admin.reports') }}" class="menu-item">
                     <i class="fas fa-chart-bar"></i>
                     <span>Reports</span>
-                </a>
+                </a> -->
                 <div class="sidebar-divider"></div>
                 <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
                     <i class="fas fa-sign-out-alt"></i>
@@ -265,27 +265,43 @@
                                 </div>
                                 
                                 <div class="event-actions">
-                                    <a href="{{ url_for('admin.event_details', event_id=event.event_id) }}" class="btn-action view">
+                                    <!-- <a href="{{ url_for('admin.event_details', event_id=event.event_id) }}" class="btn-action view">
                                         <i class="fas fa-eye"></i>
                                         <span>View Details</span>
-                                    </a>
+                                    </a> -->
                                     
                                     {% if event.status == 'pending' %}
-                                        <button class="btn-action approve" onclick="confirmAction('approve', {{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                        <button class="btn-action approve" 
+                                                data-action="approve" 
+                                                data-event-id="{{ event.event_id }}" 
+                                                data-event-title="{{ event.title }}"
+                                                onclick="confirmAction(this.dataset.action, this.dataset.eventId, this.dataset.eventTitle)">
                                             <i class="fas fa-check"></i>
                                             <span>Approve</span>
                                         </button>
-                                        <button class="btn-action reject" onclick="confirmAction('reject', {{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                        <button class="btn-action reject" 
+                                                data-action="reject" 
+                                                data-event-id="{{ event.event_id }}" 
+                                                data-event-title="{{ event.title }}"
+                                                onclick="confirmAction(this.dataset.action, this.dataset.eventId, this.dataset.eventTitle)">
                                             <i class="fas fa-times"></i>
                                             <span>Reject</span>
                                         </button>
                                     {% elif event.status == 'approved' %}
-                                        <button class="btn-action reject" onclick="confirmAction('reject', {{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                        <button class="btn-action reject" 
+                                                data-action="reject" 
+                                                data-event-id="{{ event.event_id }}" 
+                                                data-event-title="{{ event.title }}"
+                                                onclick="confirmAction(this.dataset.action, this.dataset.eventId, this.dataset.eventTitle)">
                                             <i class="fas fa-ban"></i>
                                             <span>Revoke</span>
                                         </button>
                                     {% elif event.status == 'rejected' %}
-                                        <button class="btn-action approve" onclick="confirmAction('approve', {{ event.event_id }}, '{{ event.title|replace("'", "\\'") }}')">
+                                        <button class="btn-action approve" 
+                                                data-action="approve" 
+                                                data-event-id="{{ event.event_id }}" 
+                                                data-event-title="{{ event.title }}"
+                                                onclick="confirmAction(this.dataset.action, this.dataset.eventId, this.dataset.eventTitle)">
                                             <i class="fas fa-undo"></i>
                                             <span>Approve</span>
                                         </button>

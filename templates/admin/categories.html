@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Categories - EventHub Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Category Management Specific Styles */
+        .category-management {
+            display: grid;
+            gap: 30px;
+        }
+        
+        .category-form-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        
+        .form-header {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .form-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .form-content {
+            padding: 30px;
+        }
+        
+        .category-form {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group label.required::after {
+            content: " *";
+            color: #dc3545;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
+        .form-group.error input {
+            border-color: #dc3545;
+            background-color: #fff5f5;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 6px;
+            color: #6c757d;
+            font-size: 12px;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-add {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        
+        .btn-add:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+        }
+        
+        .btn-add:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Categories List Section */
+        .categories-list-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        
+        .list-header {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .list-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .category-count {
+            background: #4caf50;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .search-box {
+            position: relative;
+            max-width: 300px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px;
+            padding-right: 40px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+        
+        .search-box i {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        
+        .categories-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .categories-table th {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 14px;
+        }
+        
+        .categories-table td {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            vertical-align: middle;
+        }
+        
+        .categories-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .category-name {
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .category-meta {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        
+        .category-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #6c757d;
+        }
+        
+        .stat-item i {
+            color: #4caf50;
+        }
+        
+        .category-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+        }
+        
+        .action-btn.edit {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .action-btn.delete {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .action-btn.edit:hover {
+            background: #c8e6c9;
+        }
+        
+        .action-btn.delete:hover {
+            background: #ffcdd2;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+            color: #4caf50;
+        }
+        
+        .empty-state h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: 20px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            color: #2c3e50;
+            font-size: 20px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        
+        .close:hover {
+            color: #2c3e50;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-success {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .category-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .form-group {
+                min-width: auto;
+            }
+            
+            .btn-add {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .list-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                max-width: none;
+            }
+            
+            .categories-table {
+                font-size: 14px;
+            }
+            
+            .categories-table th,
+            .categories-table td {
+                padding: 12px 15px;
+            }
+            
+            .category-actions {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .action-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .form-content {
+                padding: 20px;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 20px;
+            }
+            
+            .modal-footer {
+                flex-direction: column;
+            }
+            
+            .modal-footer button {
+                width: 100%;
+            }
+        }
+        
+        /* Animation Keyframes */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <nav class="navbar">
+            <div class="logo">
+                <h1><a href="{{ url_for('main.index') }}">EventHub</a></h1>
+            </div>
+            <div class="nav-user">
+                <span class="welcome-text">Welcome, {{ session.user_name }}!</span>
+                <div class="user-menu">
+                    <button class="user-menu-btn">
+                        <i class="fas fa-user-circle"></i>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown">
+                        <a href="{{ url_for('admin.profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('admin.reports') }}"><i class="fas fa-chart-bar"></i> Reports</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('main.logout') }}" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-menu">
+                <a href="{{ url_for('admin.dashboard') }}" class="menu-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+                <!-- <a href="{{ url_for('admin.users') }}" class="menu-item">
+                    <i class="fas fa-users"></i>
+                    <span>Users</span>
+                </a> -->
+                <a href="{{ url_for('admin.events') }}" class="menu-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Events</span>
+                </a>
+                <a href="{{ url_for('admin.categories') }}" class="menu-item active">
+                    <i class="fas fa-tags"></i>
+                    <span>Categories</span>
+                </a>
+                <a href="{{ url_for('admin.bookings') }}" class="menu-item">
+                    <i class="fas fa-ticket-alt"></i>
+                    <span>Bookings</span>
+                </a>
+                <!-- <a href="{{ url_for('admin.reports') }}" class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a> -->
+                <div class="sidebar-divider"></div>
+                <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' if category == 'warning' else 'times-circle' }}"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="page-header-content">
+                    <h1><i class="fas fa-tags"></i> Category Management</h1>
+                    <p>Create and manage event categories for better organization</p>
+                </div>
+                <div class="page-header-actions">
+                    <a href="{{ url_for('admin.dashboard') }}" class="btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+
+            <div class="category-management">
+                <!-- Add Category Form -->
+                <div class="category-form-section">
+                    <div class="form-header">
+                        <i class="fas fa-plus-circle"></i>
+                        <h2>Add New Category</h2>
+                    </div>
+                    <div class="form-content">
+                        <form method="POST" action="{{ url_for('admin.create_category') }}" class="category-form" id="categoryForm" novalidate>
+                            <div class="form-group">
+                                <label for="name" class="required">Category Name</label>
+                                <input type="text" id="name" name="name" required maxlength="100" 
+                                       placeholder="Enter category name (e.g., Technology, Music, Sports)">
+                                <small>Choose a clear, descriptive name for the category</small>
+                            </div>
+                            <button type="submit" class="btn-add" id="addBtn">
+                                <i class="fas fa-plus"></i>
+                                Add Category
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Categories List -->
+                <div class="categories-list-section">
+                    <div class="list-header">
+                        <h2>
+                            <i class="fas fa-list"></i>
+                            Existing Categories
+                            <span class="category-count">{{ categories|length }}</span>
+                        </h2>
+                        <div class="search-box">
+                            <input type="text" id="searchInput" placeholder="Search categories..." onkeyup="filterCategories()">
+                            <i class="fas fa-search"></i>
+                        </div>
+                    </div>
+
+                    {% if categories %}
+                        <table class="categories-table" id="categoriesTable">
+                            <thead>
+                                <tr>
+                                    <th>Category Name</th>
+                                    <th>Usage Statistics</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                    <tr class="category-row" data-name="{{ category.name.lower() }}">
+                                        <td>
+                                            <div class="category-name">{{ category.name }}</div>
+                                            <div class="category-meta">ID: {{ category.category_id }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="category-stats">
+                                                <div class="stat-item">
+                                                    <i class="fas fa-calendar-alt"></i>
+                                                    <span>{{ category.events|length }} events</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>{{ category.created_at.strftime('%B %d, %Y') if category.created_at else 'Unknown' }}</div>
+                                            <div class="category-meta">{{ category.created_at.strftime('%I:%M %p') if category.created_at else '' }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="category-actions">
+                                                <button class="action-btn edit" 
+                                                        data-category-id="{{ category.category_id }}" 
+                                                        data-category-name="{{ category.name }}"
+                                                        onclick="editCategory(this.dataset.categoryId, this.dataset.categoryName)">
+                                                    <i class="fas fa-edit"></i>
+                                                    Edit
+                                                </button>
+                                                <button class="action-btn delete" 
+                                                        data-category-id="{{ category.category_id }}" 
+                                                        data-category-name="{{ category.name }}"
+                                                        data-event-count="{{ category.events|length }}"
+                                                        onclick="confirmDelete(this.dataset.categoryId, this.dataset.categoryName, this.dataset.eventCount)">
+                                                    <i class="fas fa-trash"></i>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-tags"></i>
+                            <h3>No Categories Yet</h3>
+                            <p>Start by creating your first event category. Categories help organize events and make them easier for customers to find.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Edit Category Modal -->
+            <div id="editModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-edit"></i> Edit Category</h2>
+                        <span class="close" onclick="closeModal('editModal')">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editForm" method="POST" action="">
+                            <div class="form-group">
+                                <label for="editName" class="required">Category Name</label>
+                                <input type="text" id="editName" name="name" required maxlength="100" 
+                                       placeholder="Enter category name">
+                                <small>Choose a clear, descriptive name for the category</small>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+                        <button class="btn-success" onclick="submitEdit()">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delete Confirmation Modal -->
+            <div id="deleteModal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h2>
+                        <span class="close" onclick="closeModal('deleteModal')">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete the category "<span id="deleteCategoryName"></span>"?</p>
+                        <div id="deleteWarning" style="display: none;">
+                            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 12px; margin-top: 15px;">
+                                <strong>⚠️ Warning:</strong> This category is being used by <span id="eventCount"></span> event(s). 
+                                Deleting it will remove the category association from these events.
+                            </div>
+                        </div>
+                        <p style="margin-top: 15px; color: #dc3545; font-weight: 500;">This action cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+                        <form id="deleteForm" method="POST" action="" style="display: inline;">
+                            <button type="submit" class="btn-danger">
+                                <i class="fas fa-trash"></i> Delete Category
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+        // Form validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('categoryForm');
+            const nameInput = document.getElementById('name');
+            const addBtn = document.getElementById('addBtn');
+            
+            // Real-time validation
+            nameInput.addEventListener('input', function() {
+                validateCategoryName(this);
+            });
+            
+            nameInput.addEventListener('blur', function() {
+                validateCategoryName(this);
+            });
+            
+            // Form submission
+            form.addEventListener('submit', function(e) {
+                if (!validateForm()) {
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Show loading state
+                addBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+                addBtn.disabled = true;
+            });
+            
+            function validateCategoryName(input) {
+                const value = input.value.trim();
+                const formGroup = input.closest('.form-group');
+                
+                // Clear previous errors
+                clearFieldError(formGroup);
+                
+                if (!value) {
+                    if (input === document.activeElement || input.value !== '') {
+                        showFieldError(form, input, 'Category name is required');
+                    }
+                    return false;
+                }
+                
+                if (value.length < 2) {
+                    showFieldError(form, input, 'Category name must be at least 2 characters');
+                    return false;
+                }
+                
+                if (value.length > 100) {
+                    showFieldError(form, input, 'Category name must be less than 100 characters');
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            function validateForm() {
+                return validateCategoryName(nameInput);
+            }
+            
+            function showFieldError(form, input, message) {
+                const formGroup = input.closest('.form-group');
+                formGroup.classList.add('error');
+                
+                // Remove existing error message
+                const existingError = formGroup.querySelector('.error-message');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+                // Add new error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+                input.parentNode.appendChild(errorDiv);
+            }
+            
+            function clearFieldError(formGroup) {
+                formGroup.classList.remove('error');
+                
+                const errorMessage = formGroup.querySelector('.error-message');
+                if (errorMessage) {
+                    errorMessage.remove();
+                }
+            }
+            
+            // Auto-hide flash messages
+            setTimeout(function() {
+                const flashMessages = document.querySelector('.flash-messages');
+                if (flashMessages) {
+                    flashMessages.style.opacity = '0';
+                    setTimeout(() => {
+                        flashMessages.style.display = 'none';
+                    }, 300);
+                }
+            }, 5000);
+        });
+        
+        // Filter categories
+        function filterCategories() {
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('.category-row');
+            
+            rows.forEach(row => {
+                const name = row.getAttribute('data-name');
+                if (name.includes(searchInput)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        // Edit category
+        function editCategory(categoryId, categoryName) {
+            document.getElementById('editName').value = categoryName;
+            document.getElementById('editForm').action = `/admin/categories/${categoryId}/edit`;
+            
+            // Open modal
+            document.getElementById('editModal').style.display = 'flex';
+        }
+        
+        function submitEdit() {
+            const editName = document.getElementById('editName');
+            
+            // Validate
+            if (!editName.value.trim()) {
+                alert('Category name is required');
+                return;
+            }
+            
+            // Submit form
+            document.getElementById('editForm').submit();
+        }
+        
+        // Delete category
+        function confirmDelete(categoryId, categoryName, eventCount) {
+            document.getElementById('deleteCategoryName').textContent = categoryName;
+            document.getElementById('deleteForm').action = `/admin/categories/${categoryId}/delete`;
+            
+            // Show warning if category is in use
+            const deleteWarning = document.getElementById('deleteWarning');
+            const eventCountSpan = document.getElementById('eventCount');
+            
+            if (eventCount > 0) {
+                deleteWarning.style.display = 'block';
+                eventCountSpan.textContent = eventCount;
+            } else {
+                deleteWarning.style.display = 'none';
+            }
+            
+            // Open modal
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+        
+        // Close modals
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
