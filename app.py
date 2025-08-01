@@ -9,6 +9,7 @@ from routes.main import main_bp
 from routes.organizer import organizer_bp
 from routes.customer import customer_bp
 from routes.admin import admin_bp
+from routes.reports import reports_bp
 
 def create_app():
     app = Flask(__name__)
@@ -40,6 +41,7 @@ def create_app():
     app.register_blueprint(organizer_bp, url_prefix='/organizer')
     app.register_blueprint(customer_bp, url_prefix='/customer')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(reports_bp, url_prefix='/reports')
     
     return app
 

@@ -418,10 +418,15 @@
                     <i class="fas fa-brain"></i>
                     <span>Sentiment Analysis</span>
                 </a>
+                 <a href="{{ url_for('reports.organizer_reports') }}" class="menu-item active">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
                 <a href="{{ url_for('organizer.profile') }}" class="menu-item">
                     <i class="fas fa-user"></i>
                     <span>Profile</span>
                 </a>
+                
                 <div class="sidebar-divider"></div>
                 <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
                     <i class="fas fa-sign-out-alt"></i>
@@ -561,111 +566,7 @@
                     <div class="chart-wrapper">
                         <canvas id="sentimentChart"></canvas>
                     </div>
-                </div>
-
-                <!-- Key Insights -->
-                <div class="dashboard-section">
-                    <div class="section-header">
-                        <h3 class="section-title">
-                            <i class="fas fa-lightbulb"></i>
-                            Key Insights
-                        </h3>
-                    </div>
-                    
-                    <div class="insights-grid">
-                        <div class="insight-card urgent">
-                            <div class="insight-header">
-                                <div class="insight-icon">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </div>
-                                <div class="insight-title">Areas Needing Attention</div>
-                            </div>
-                            <ul class="insight-list" id="urgent-concerns">
-                                {% if analysis_results.insights.urgent_concerns %}
-                                    {% for concern in analysis_results.insights.urgent_concerns %}
-                                        <li class="insight-item priority-{{ concern.priority if concern.priority else 'medium' }}">
-                                            {{ concern.description }}
-                                        </li>
-                                    {% endfor %}
-                                {% else %}
-                                    <li class="insight-item">No urgent concerns identified - great job!</li>
-                                {% endif %}
-                            </ul>
-                        </div>
-                        
-                        <div class="insight-card opportunity">
-                            <div class="insight-header">
-                                <div class="insight-icon">
-                                    <i class="fas fa-chart-line"></i>
-                                </div>
-                                <div class="insight-title">Improvement Opportunities</div>
-                            </div>
-                            <ul class="insight-list" id="opportunities">
-                                {% if analysis_results.insights.improvement_opportunities %}
-                                    {% for opportunity in analysis_results.insights.improvement_opportunities %}
-                                        <li class="insight-item">
-                                            {{ opportunity.description }}
-                                        </li>
-                                    {% endfor %}
-                                {% else %}
-                                    <li class="insight-item">Keep monitoring feedback for improvement opportunities</li>
-                                {% endif %}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Common Themes -->
-                <div class="dashboard-section">
-                    <div class="section-header">
-                        <h3 class="section-title">
-                            <i class="fas fa-tags"></i>
-                            What Customers Are Saying
-                        </h3>
-                    </div>
-                    
-                    <div class="themes-container">
-                        <div class="theme-card positive-themes">
-                            <h4 style="color: #28a745; margin-bottom: 15px;">
-                                <i class="fas fa-thumbs-up"></i> What They Love
-                            </h4>
-                            <ul class="theme-list">
-                                {% if analysis_results.themes.top_positive_themes %}
-                                    {% for theme, count in analysis_results.themes.top_positive_themes[:5] %}
-                                        <li class="theme-item">
-                                            <span class="theme-text">{{ theme.title() }}</span>
-                                            <span class="theme-count">{{ count }}</span>
-                                        </li>
-                                    {% endfor %}
-                                {% else %}
-                                    <li class="theme-item">
-                                        <span class="theme-text">No positive themes identified yet</span>
-                                    </li>
-                                {% endif %}
-                            </ul>
-                        </div>
-                        
-                        <div class="theme-card negative-themes">
-                            <h4 style="color: #dc3545; margin-bottom: 15px;">
-                                <i class="fas fa-thumbs-down"></i> Areas to Improve
-                            </h4>
-                            <ul class="theme-list">
-                                {% if analysis_results.themes.top_negative_themes %}
-                                    {% for theme, count in analysis_results.themes.top_negative_themes[:5] %}
-                                        <li class="theme-item">
-                                            <span class="theme-text">{{ theme.title() }}</span>
-                                            <span class="theme-count">{{ count }}</span>
-                                        </li>
-                                    {% endfor %}
-                                {% else %}
-                                    <li class="theme-item">
-                                        <span class="theme-text">No negative themes identified - excellent!</span>
-                                    </li>
-                                {% endif %}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+                </div> 
             </div>
         </main>
     </div>

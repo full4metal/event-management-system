@@ -21,6 +21,172 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+# Admin API routes for reports
+@admin_bp.route('/api/platform-report')
+@admin_required
+def api_platform_report():
+    """API endpoint for platform revenue report data"""
+    # Get parameters
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    organizer_id = request.args.get('organizer_id')
+    event_id = request.args.get('event_id')
+    
+    try:
+        # Parse dates
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        else:
+            start_date = datetime.utcnow() - timedelta(days=30)
+            
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            # Set to end of day
+            end_date = end_date.replace(hour=23, minute=59, second=59)
+        else:
+            end_date = datetime.utcnow()
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+    
+    # Get platform report data
+    report_data = get_platform_report_data(start_date, end_date, organizer_id, event_id)
+    
+    return jsonify(report_data)
+
+def get_platform_report_data(start_date, end_date, organizer_id=None, event_id=None):
+    """Get comprehensive platform revenue data"""
+    from models import Organizer
+    
+    # Base query for bookings in date range
+    bookings_query = Booking.query.filter(
+        Booking.booking_time.between(start_date, end_date),
+        Booking.status == 'booked'
+    )
+    
+    # Filter by organizer if specified
+    if organizer_id and organizer_id != 'all':
+        try:
+            organizer_id = int(organizer_id)
+            event_ids = [e.event_id for e in Event.query.filter_by(organizer_id=organizer_id).all()]
+            if event_ids:
+                bookings_query = bookings_query.filter(Booking.event_id.in_(event_ids))
+            else:
+                bookings_query = bookings_query.filter(Booking.event_id == -1)  # No results
+        except ValueError:
+            pass
+    
+    # Filter by event if specified
+    if event_id and event_id != 'all':
+        try:
+            event_id = int(event_id)
+            bookings_query = bookings_query.filter_by(event_id=event_id)
+        except ValueError:
+            pass
+    
+    bookings = bookings_query.all()
+    
+    # Calculate summary metrics
+    gross_revenue = sum(float(booking.total_amount) if booking.total_amount else 0.0 for booking in bookings)
+    platform_commission = gross_revenue * 0.05
+    total_bookings = len(bookings)
+    total_tickets = sum(booking.quantity for booking in bookings)
+    
+    # Get unique organizers with bookings
+    organizer_ids = list(set(booking.event.organizer_id for booking in bookings if booking.event))
+    active_organizers = len(organizer_ids)
+    
+    # Commission by month
+    commission_by_month = {}
+    for booking in bookings:
+        month_key = booking.booking_time.strftime('%Y-%m') if booking.booking_time else 'Unknown'
+        booking_amount = float(booking.total_amount) if booking.total_amount else 0.0
+        commission_by_month[month_key] = commission_by_month.get(month_key, 0) + booking_amount * 0.05
+    
+    # Organizer breakdown
+    organizer_breakdown = []
+    for org_id in organizer_ids:
+        organizer = Organizer.query.get(org_id)
+        if not organizer:
+            continue
+            
+        org_bookings = [b for b in bookings if b.event and b.event.organizer_id == org_id]
+        org_events = list(set(b.event_id for b in org_bookings))
+        
+        org_gross_revenue = sum(float(b.total_amount) if b.total_amount else 0.0 for b in org_bookings)
+        org_commission = org_gross_revenue * 0.05
+        org_net_revenue = org_gross_revenue * 0.95
+        
+        organizer_breakdown.append({
+            'organizer_id': org_id,
+            'name': organizer.name,
+            'email': organizer.user.email if organizer.user else 'N/A',
+            'organization_name': organizer.organization_name,
+            'event_count': len(org_events),
+            'booking_count': len(org_bookings),
+            'gross_revenue': org_gross_revenue,
+            'commission': org_commission,
+            'net_revenue': org_net_revenue
+        })
+    
+    # Sort by commission (highest first)
+    organizer_breakdown.sort(key=lambda x: x['commission'], reverse=True)
+    
+    # Event breakdown
+    event_breakdown = []
+    event_revenue = {}
+    
+    for booking in bookings:
+        if not booking.event:
+            continue
+            
+        event_id = booking.event_id
+        if event_id not in event_revenue:
+            event_revenue[event_id] = {
+                'event': booking.event,
+                'bookings': [],
+                'gross_revenue': 0
+            }
+        
+        event_revenue[event_id]['bookings'].append(booking)
+        booking_amount = float(booking.total_amount) if booking.total_amount else 0.0
+        event_revenue[event_id]['gross_revenue'] += booking_amount
+    
+    for event_id, data in event_revenue.items():
+        event = data['event']
+        gross_revenue = data['gross_revenue']
+        commission = gross_revenue * 0.05
+        
+        event_breakdown.append({
+            'event_id': event_id,
+            'title': event.title,
+            'organizer_name': event.organizer.name if event.organizer else 'N/A',
+            'event_date': event.event_date,
+            'booking_count': len(data['bookings']),
+            'gross_revenue': gross_revenue,
+            'commission': commission
+        })
+    
+    # Sort by commission (highest first)
+    event_breakdown.sort(key=lambda x: x['commission'], reverse=True)
+    
+    return {
+        'summary': {
+            'platform_commission': round(platform_commission, 2),
+            'gross_revenue': round(gross_revenue, 2),
+            'total_bookings': total_bookings,
+            'total_tickets': total_tickets,
+            'active_organizers': active_organizers,
+            'avg_commission_per_booking': round(platform_commission / total_bookings, 2) if total_bookings > 0 else 0
+        },
+        'commission_by_month': dict(sorted(commission_by_month.items())),
+        'organizer_breakdown': organizer_breakdown,
+        'event_breakdown': event_breakdown,
+        'date_range': {
+            'start_date': start_date.strftime('%Y-%m-%d'),
+            'end_date': end_date.strftime('%Y-%m-%d')
+        }
+    }
+
 # Admin routes
 @admin_bp.route('/dashboard')
 @admin_required
@@ -34,8 +200,10 @@ def dashboard():
     total_bookings = Booking.query.count()
     
     # Calculate total revenue
-    total_revenue = db.session.query(db.func.sum(Booking.total_amount))\
+    # Calculate admin commission (5% of all bookings)
+    gross_revenue = db.session.query(db.func.sum(Booking.total_amount))\
                     .filter(Booking.status == 'booked').scalar() or 0
+    admin_commission = float(gross_revenue) * 0.05
     
     # Get recent events
     recent_events = Event.query.order_by(Event.created_at.desc()).limit(5).all()
@@ -50,7 +218,8 @@ def dashboard():
                           total_events=total_events,
                           pending_events=pending_events,
                           total_bookings=total_bookings,
-                          total_revenue=total_revenue,
+                          admin_commission=admin_commission,
+                          gross_revenue=gross_revenue,
                           recent_events=recent_events,
                           recent_bookings=recent_bookings)
 
@@ -233,49 +402,24 @@ def bookings():
 @admin_bp.route('/reports')
 @admin_required
 def reports():
-    # Get date range for reports
+    # Get default date range for reports (last 30 days)
     end_date = datetime.utcnow()
-    start_date = end_date - timedelta(days=30)  # Last 30 days by default
+    start_date = end_date - timedelta(days=30)
     
-    # Get events created in date range
-    events_created = Event.query.filter(
-        Event.created_at.between(start_date, end_date)
-    ).count()
+    # Get all organizers and events for filter dropdowns
+    from models import Organizer
+    organizers = Organizer.query.join(User).all()
+    events = Event.query.all()
     
-    # Get bookings made in date range
-    bookings_made = Booking.query.filter(
-        Booking.booking_time.between(start_date, end_date)
-    ).count()
-    
-    # Calculate revenue in date range
-    revenue = db.session.query(db.func.sum(Booking.total_amount))\
-              .filter(Booking.booking_time.between(start_date, end_date))\
-              .filter(Booking.status == 'booked').scalar() or 0
-    
-    # Get top categories
-    top_categories = db.session.query(
-        Category.name, db.func.count(Event.event_id).label('event_count')
-    ).join(Event, Category.category_id == Event.category_id)\
-     .group_by(Category.name)\
-     .order_by(db.desc('event_count'))\
-     .limit(5).all()
-    
-    # Get top events by bookings
-    top_events = db.session.query(
-        Event.title, db.func.count(Booking.booking_id).label('booking_count')
-    ).join(Booking, Event.event_id == Booking.event_id)\
-     .group_by(Event.title)\
-     .order_by(db.desc('booking_count'))\
-     .limit(5).all()
+    # Get initial report data
+    report_data = get_platform_report_data(start_date, end_date)
     
     return render_template('admin/reports.html',
-                          start_date=start_date,
-                          end_date=end_date,
-                          events_created=events_created,
-                          bookings_made=bookings_made,
-                          revenue=revenue,
-                          top_categories=top_categories,
-                          top_events=top_events)
+                          organizers=organizers,
+                          events=events,
+                          report_data=report_data,
+                          start_date=start_date.strftime('%Y-%m-%d'),
+                          end_date=end_date.strftime('%Y-%m-%d'))
 
 @admin_bp.route('/profile', methods=['GET', 'POST'])
 @admin_required

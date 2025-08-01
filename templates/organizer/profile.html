@@ -455,10 +455,15 @@
                     <i class="fas fa-brain"></i>
                     <span>Sentiment Analysis</span>
                 </a> -->
+                 <a href="{{ url_for('reports.organizer_reports') }}" class="menu-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
                 <a href="{{ url_for('organizer.profile') }}" class="menu-item active">
                     <i class="fas fa-user"></i>
                     <span>Profile</span>
                 </a>
+                
                 <div class="sidebar-divider"></div>
                 <a href="{{ url_for('main.logout') }}" class="menu-item logout-menu">
                     <i class="fas fa-sign-out-alt"></i>
